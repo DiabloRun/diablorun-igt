@@ -1,8 +1,8 @@
-import os
 import numpy as np
 from PIL import Image
-from diablorun_igt import Detector
 import glob
+
+from diablorun_igt.detector import Detector
 
 def get_rgb(image_path):
     image = Image.open(image_path)

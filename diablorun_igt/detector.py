@@ -2,7 +2,6 @@ import numpy as np
 
 class Detector:
     BLACK_COLOR_THRESHOLD = 10
-    LOADING_MIN_MARGIN = 100
 
     def __init__(self, rgb):
         self.rgb = rgb
