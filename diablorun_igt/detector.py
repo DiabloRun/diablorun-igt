@@ -44,9 +44,8 @@ class Detector:
                 self._equal_within(logo_bottom/self.height, 0.1, 0.03) and \
                 self._equal_within(logo_left/self.width, 0.9125, 0.03) and \
                 self._equal_within(logo_right/self.width, 0.045, 0.03)
-        
-        # print(top/self.rgb.shape[0], bottom/self.rgb.shape[0]) == 0.25
-        
-        # If there is a box with a specific ratio in the middle then this could be door loading screen
-        ratio = (self.width - left - right) / (self.height - top - bottom)
-        return self._equal_within(ratio, 1.477, 0.03)
+    
+        # If there is a box with a specific size in the middle then this could be door loading screen
+        return self._equal_within(top/self.height, 0.25, 0.03) and \
+            self._equal_within(bottom/self.height, 0.25, 0.03) and \
+            self._equal_within((self.width - left - right)/self.height, 0.738, 0.03)
