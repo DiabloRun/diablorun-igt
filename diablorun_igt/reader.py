@@ -26,7 +26,7 @@ class Reader:
         if new_is_loading != self.is_loading:
             changes.append({ "event": "is_loading", "value": new_is_loading })
             self.is_loading = new_is_loading
-        
+    
         return changes
     
     def close(self):

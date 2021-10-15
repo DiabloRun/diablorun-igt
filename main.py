@@ -13,13 +13,17 @@ watcher = Reader()
 
 while True:
     try:
-        changes = watcher.get_changes()
+        try:
+            changes = watcher.get_changes()
 
-        for change in changes:
-            print(change)
-            queue.put_nowait(change)
-        
-        time.sleep(0.01)
+            for change in changes:
+                print(change)
+                queue.put_nowait(change)
+            
+            time.sleep(0.01)
+        except Exception:
+            print("Unable to read screen")
+            time.sleep(1)
     except KeyboardInterrupt:
         queue.put_nowait({ "event": "stop" })
         break
