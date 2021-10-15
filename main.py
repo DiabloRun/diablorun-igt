@@ -1,3 +1,4 @@
+import sys
 import time
 from queue import Queue
 
@@ -9,12 +10,15 @@ queue = Queue()
 ls_client = LiveSplitClient(queue)
 ls_client.start()
 
-watcher = Reader()
+if len(sys.argv) > 1:
+    reader = Reader(sys.argv[1])
+else:
+    reader = Reader()
 
 while True:
     try:
         try:
-            changes = watcher.get_changes()
+            changes = reader.get_changes()
 
             for change in changes:
                 print(change)

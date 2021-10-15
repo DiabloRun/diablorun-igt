@@ -1,6 +1,7 @@
 import mss
 import mss.tools
 import numpy as np
+import time
 
 from .window import Window
 from .detector import Detector
@@ -8,16 +9,16 @@ from .detector import Detector
 class Reader:
     is_loading = False
 
-    def __init__(self):
+    def __init__(self, output_dir=None):
         self.window = Window()
         self.sct = mss.mss()
+        self.output_dir = output_dir
     
     def get_changes(self):
         changes = []
 
         rect = self.window.get_rect()
         screenshot = self.sct.grab(rect)
-        #mss.tools.to_png(screenshot.rgb, screenshot.size, output="grab.png")
         rgb = np.array(screenshot)[...,:3]
 
         detector = Detector(rgb)
@@ -26,6 +27,9 @@ class Reader:
         if new_is_loading != self.is_loading:
             changes.append({ "event": "is_loading", "value": new_is_loading })
             self.is_loading = new_is_loading
+
+            if self.output_dir != None and self.is_loading:
+                mss.tools.to_png(screenshot.rgb, screenshot.size, output=self.output_dir + "/" + str(time.time()) + ".png")
     
         return changes
     

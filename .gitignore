@@ -139,3 +139,4 @@ cython_debug/
 
 # Other
 .DS_Store
+/start_loading_images
