@@ -1,8 +1,11 @@
 import sys
-import mss
 import numpy as np
 
 if sys.platform == "win32":
+    import mss.windows
+    mss.windows.CAPTUREBLT = 0
+
+    import mss
     import win32gui
     import ctypes
 
