@@ -16,8 +16,6 @@ class DiabloRunClient:
         }
 
         self.status = "not found"
-        self.capture_failed = False
-        self.capture_failed_at = None
         self.is_loading_output = is_loading_output
 
     def run(self):
@@ -27,16 +25,10 @@ class DiabloRunClient:
         while self.running:
             time.sleep(0.01)
 
-            if self.capture_failed and time.time() - self.capture_failed_at < 1:
-                continue
-
             try:
                 rgb = window_capture.get_rgb()
             except WindowNotFound:
-                print("D2R window not found, trying again in 1 second...")
                 self.status = "not found"
-                self.capture_failed = True
-                self.capture_failed_at = time.time()
                 continue
             except WindowCaptureFailed:
                 self.status = "minimized"
