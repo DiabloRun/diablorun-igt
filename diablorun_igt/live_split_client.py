@@ -27,21 +27,6 @@ class LiveSplitClient:
         self.connect()
 
         while self.running:
-            """
-            try:
-                message = self.queue.get(True, 0.01)
-
-                if self.connected:
-                    try:
-                        self._send(message)
-                    except ConnectionAbortedError:
-                        self.s = socket.socket(
-                            socket.AF_INET, socket.SOCK_STREAM)
-                        self.connect()
-            except Empty:
-                pass
-            """
-
             if not self.connected and time.time() - self.connection_failed_at > 1:
                 self.connect()
 

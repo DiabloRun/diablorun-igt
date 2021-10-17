@@ -1,8 +1,9 @@
 import time
 import os
+from PIL import Image
 from queue import Queue
 
-from .window_capture import WindowCapture
+from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
 
 
@@ -14,6 +15,7 @@ class DiabloRunClient:
             "is_loading": False
         }
 
+        self.status = "not found"
         self.capture_failed = False
         self.capture_failed_at = None
         self.is_loading_output = is_loading_output
@@ -30,10 +32,14 @@ class DiabloRunClient:
 
             try:
                 rgb = window_capture.get_rgb()
-            except Exception:
-                print("Could not capture D2R window, trying again in 1 second...")
+            except WindowNotFound:
+                print("D2R window not found, trying again in 1 second...")
+                self.status = "not found"
                 self.capture_failed = True
                 self.capture_failed_at = time.time()
+                continue
+            except WindowCaptureFailed:
+                self.status = "minimized"
                 continue
 
             is_loading = loading_detection.is_loading(rgb)
@@ -44,8 +50,12 @@ class DiabloRunClient:
                     {"event": "is_loading_change", "value": is_loading})
 
                 if is_loading and self.is_loading_output:
-                    window_capture.write_last_capture(os.path.join(
-                        self.is_loading_output, str(time.time()) + ".jpg"))
+                    im = Image.fromarray(
+                        rgb[:, :, ::-1].astype('uint8'), 'RGB')
+                    im.save(os.path.join(self.is_loading_output,
+                            str(time.time()) + ".jpg"))
+
+            self.status = is_loading and "loading" or "playing"
 
     def stop(self):
         self.running = False

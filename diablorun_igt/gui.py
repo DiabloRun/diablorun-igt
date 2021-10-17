@@ -11,14 +11,14 @@ class GUI:
         self.tk.title("Diablo.run IGT")
 
         self.d2r_window_status = tkinter.StringVar()
-        self.d2r_window_status.set("not detected")
+        self.d2r_window_status.set("detecting...")
 
         tkinter.Label(self.tk, text="D2R window:").grid(row=0, column=0)
         tkinter.Label(self.tk, textvariable=self.d2r_window_status).grid(
             row=0, column=1)
 
         self.ls_client_status = tkinter.StringVar()
-        self.ls_client_status.set("not connected")
+        self.ls_client_status.set("connecting...")
 
         tkinter.Label(self.tk, text="LiveSplit server:").grid(row=1, column=0)
         tkinter.Label(self.tk, textvariable=self.ls_client_status).grid(
@@ -43,8 +43,7 @@ class GUI:
                 break
 
         # Update gui elements
-        self.d2r_window_status.set(
-            self.dr_client.capture_failed and "not detected" or "detected")
+        self.d2r_window_status.set(self.dr_client.status)
 
         self.ls_client_status.set(
             self.ls_client.connected and "connected" or "not connected")

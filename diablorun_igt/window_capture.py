@@ -1,50 +1,63 @@
 import sys
 import numpy as np
 
-if sys.platform == "win32":
-    import mss.windows
-    mss.windows.CAPTUREBLT = 0
 
-    import mss
-    import mss.tools
+class WindowNotFound(Exception):
+    pass
+
+
+class WindowCaptureFailed(Exception):
+    pass
+
+
+if sys.platform == "win32":
     import win32gui
-    import ctypes
+    import win32ui
+    import pywintypes
+    from ctypes import windll
+
+    windll.user32.SetProcessDPIAware()
 
     class WindowCapture:
         def __init__(self, name: str = "Diablo II: Resurrected"):
-            self.dwmapi = ctypes.WinDLL("dwmapi")
             self.name = name
-            self.sct = mss.mss()
-            self.screenshot = None
-
-        def get_hwnd(self) -> int:
-            return win32gui.FindWindow(None, self.name)
-
-        def get_rect(self):
-            hwnd = self.get_hwnd()
-            rect = ctypes.wintypes.RECT()
-
-            self.dwmapi.DwmGetWindowAttribute(
-                ctypes.wintypes.HWND(hwnd),
-                ctypes.wintypes.DWORD(9),
-                ctypes.byref(rect),
-                ctypes.sizeof(rect)
-            )
-
-            return (
-                rect.left + 1,
-                rect.top + 33,
-                rect.right - 1,
-                rect.bottom - 1
-            )
 
         def get_rgb(self) -> np.ndarray:
-            rect = self.get_rect()
-            self.screenshot = self.sct.grab(rect)
+            hwnd = win32gui.FindWindow(None, self.name)
 
-            return np.array(self.screenshot)[..., :3]
+            # Get window rect
+            try:
+                rect = win32gui.GetClientRect(hwnd)
+                width = rect[2] - rect[0]
+                height = rect[3] - rect[1]
+            except pywintypes.error:
+                raise WindowNotFound()
 
-        def write_last_capture(self, path):
-            if self.screenshot:
-                mss.tools.to_png(
-                    self.screenshot.rgb, self.screenshot.size, output=path)
+            if width <= 0 or height <= 0:
+                raise WindowCaptureFailed()
+
+            # Create DC
+            hwnd_dc = win32gui.GetWindowDC(hwnd)
+            mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
+            save_dc = mfc_dc.CreateCompatibleDC()
+
+            bit_map = win32ui.CreateBitmap()
+            bit_map.CreateCompatibleBitmap(mfc_dc, width, height)
+            save_dc.SelectObject(bit_map)
+
+            # Get screenshot
+            result = windll.user32.PrintWindow(hwnd, save_dc.GetSafeHdc(), 3)
+
+            if result != 1:
+                raise WindowCaptureFailed()
+
+            # bmpinfo = bit_map.GetInfo()
+            bmpstr = bit_map.GetBitmapBits(True)
+
+            win32gui.DeleteObject(bit_map.GetHandle())
+            save_dc.DeleteDC()
+            mfc_dc.DeleteDC()
+            win32gui.ReleaseDC(hwnd, hwnd_dc)
+
+            # Convert to np array
+            return np.frombuffer(bmpstr, dtype=np.uint8).reshape(height, width, 4)[..., :3]
