@@ -18,3 +18,13 @@ This tool tracks Diablo II: Resurrected loading screens and pauses LiveSplit gam
 2. Run diablorun-igt.exe
 
 Everything is setup! Launch the game, start the timer and see if it pauses correctly during loading screens.
+
+## Development
+
+Currently only Windows is supported as the win32 API is used to capture the screen.
+
+1. Create a virtualenv - eg `python -m venv .venv`
+2. Install dependencies using `pip install -r requirements.txt`
+3. Run tests using `python test.py`
+4. Run the program using `python main.py`
+5. Build using pyinstaller - eg `pyinstaller -F --noconsole main.py`
