@@ -6,6 +6,7 @@ if sys.platform == "win32":
     mss.windows.CAPTUREBLT = 0
 
     import mss
+    import mss.tools
     import win32gui
     import ctypes
 
@@ -14,6 +15,7 @@ if sys.platform == "win32":
             self.dwmapi = ctypes.WinDLL("dwmapi")
             self.name = name
             self.sct = mss.mss()
+            self.screenshot = None
 
         def get_hwnd(self) -> int:
             return win32gui.FindWindow(None, self.name)
@@ -38,6 +40,11 @@ if sys.platform == "win32":
 
         def get_rgb(self) -> np.ndarray:
             rect = self.get_rect()
-            screenshot = self.sct.grab(rect)
+            self.screenshot = self.sct.grab(rect)
 
-            return np.array(screenshot)[..., :3]
+            return np.array(self.screenshot)[..., :3]
+
+        def write_last_capture(self, path):
+            if self.screenshot:
+                mss.tools.to_png(
+                    self.screenshot.rgb, self.screenshot.size, output=path)
