@@ -14,7 +14,7 @@ This tool tracks Diablo II: Resurrected loading screens and pauses LiveSplit gam
 5. Make sure you have a timer that tracks "game time".
 
 ### Setting up Diablo.run IGT
-1. [Download latest release](https://github.com/DiabloRun/diablorun-igt/releases/tag/21.10.15-pre2)
+1. [Download latest release](https://github.com/DiabloRun/diablorun-igt/releases/download/21.10.18-pre/diablorun-igt.exe)
 2. Run diablorun-igt.exe
 
 Everything is setup! Launch the game, start the timer and see if it pauses correctly during loading screens.
