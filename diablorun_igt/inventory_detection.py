@@ -32,24 +32,26 @@ ITEM_SLOT_COORDINATES_768 = {
 }
 
 
-def get_item_slot_hover(rgb):
-    if rgb.shape[0] == 1080:
-        coordinates = ITEM_SLOT_COORDINATES_1080
-    elif rgb.shape[0] == 768:
-        coordinates = ITEM_SLOT_COORDINATES_768
-    else:
-        return None
+def get_item_slot_coordinates(bgr):
+    if bgr.shape[0] == 1080:
+        return ITEM_SLOT_COORDINATES_1080
+    elif bgr.shape[0] == 768:
+        return ITEM_SLOT_COORDINATES_768
 
+
+def get_item_slot_hover(bgr, coordinates):
+    if coordinates is None:
+        return None
     #n = 0
 
     for slot in coordinates:
         x, y, w, h = coordinates[slot]
 
         slot_corner_colors = np.array((
-            rgb[y+1, x+1],
-            rgb[y+1, x+w-2],
-            rgb[y+h-2, x+w-2],
-            rgb[y+h-2, x+w-2]
+            bgr[y+1, x+1],
+            bgr[y+1, x+w-2],
+            bgr[y+h-2, x+w-2],
+            bgr[y+h-2, x+w-2]
         ))
 
         #slot_image = rgb[y:y+h, x:x+w]

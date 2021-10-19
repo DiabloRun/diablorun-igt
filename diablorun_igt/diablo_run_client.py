@@ -3,7 +3,7 @@ import os
 from PIL import Image
 from queue import Queue
 
-from diablorun_igt.inventory_detection import get_item_slot_hover
+from diablorun_igt.inventory_detection import get_item_slot_coordinates, get_item_slot_hover
 
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
@@ -19,6 +19,7 @@ class DiabloRunClient:
 
         self.status = "not found"
         self.is_loading_output = is_loading_output
+        self.previous_item_slot_hover = None
 
     def run(self):
         self.running = True
@@ -36,6 +37,7 @@ class DiabloRunClient:
                 self.status = "minimized"
                 continue
 
+            # Check loading
             is_loading = loading_detection.is_loading(bgr)
 
             if is_loading != self.state["is_loading"]:
@@ -44,22 +46,39 @@ class DiabloRunClient:
                     {"event": "is_loading_change", "value": is_loading})
 
                 if is_loading and self.is_loading_output:
-                    rgb = Image.fromarray(
-                        bgr[:, :, ::-1].astype('uint8'), 'RGB')
-                    rgb.save(os.path.join(self.is_loading_output,
-                                          str(time.time()) + ".jpg"))
+                    self.save_rgb(bgr, os.path.join(self.is_loading_output,
+                                                    str(time.time()) + ".jpg"))
 
             if is_loading:
                 self.status = "loading"
                 continue
 
-            item_slot_hover = get_item_slot_hover(bgr)
+            # Check item hover
+            item_slot_coords = get_item_slot_coordinates(bgr)
+            item_slot_hover = get_item_slot_hover(bgr, item_slot_coords)
 
             if item_slot_hover:
                 self.status = "hover " + item_slot_hover
+
+                if item_slot_hover != self.previous_item_slot_hover:
+                    x, y, w, h = item_slot_coords[item_slot_hover]
+                    self.save_rgb(bgr[y:y+h, x:x+w],
+                                  "debug/" + item_slot_hover + ".jpg")
+
+            self.previous_item_slot_hover = item_slot_hover
+
+            if item_slot_hover:
                 continue
 
-            self.status = "Playing"
+            # Nothing of interest detected
+            self.status = "playing"
+
+    def save_rgb(self, bgr, path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        rgb = Image.fromarray(bgr[:, :, ::-1].astype('uint8'), 'RGB')
+        rgb.save(path)
+
+        print("saved", path)
 
     def stop(self):
         self.running = False
