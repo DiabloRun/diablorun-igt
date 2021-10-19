@@ -141,3 +141,4 @@ cython_debug/
 .DS_Store
 /start_loading_images
 diablorun.ini
+/debug
