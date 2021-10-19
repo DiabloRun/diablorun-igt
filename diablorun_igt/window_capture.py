@@ -22,7 +22,7 @@ if sys.platform == "win32":
         def __init__(self, name: str = "Diablo II: Resurrected"):
             self.name = name
 
-        def get_rgb(self) -> np.ndarray:
+        def get_bgr(self) -> np.ndarray:
             hwnd = win32gui.FindWindow(None, self.name)
 
             # Get window rect
