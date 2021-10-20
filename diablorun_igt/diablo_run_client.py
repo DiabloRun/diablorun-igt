@@ -2,9 +2,11 @@ import time
 import os
 from PIL import Image
 from queue import Queue
+import base64
+from urllib import request
 
 from diablorun_igt.inventory_detection import get_item_description_rect, get_item_slot_hover, get_item_slot_rects
-from diablorun_igt.utils import bgr_to_rgb
+from diablorun_igt.utils import bgr_to_rgb, get_jpg
 
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
@@ -65,10 +67,14 @@ class DiabloRunClient:
                     bgr, item_rect)
 
                 if item_description_rect != None:
-                    self.save_rgb_rect(
-                        bgr, item_rect, "debug/" + item_slot_hover + ".jpg")
-                    self.save_rgb_rect(
-                        bgr, item_description_rect, "debug/" + item_slot_hover + "_description.jpg")
+                    # self.save_rgb_rect(
+                    #    bgr, item_rect, "debug/" + item_slot_hover + ".jpg")
+                    # self.save_rgb_rect(
+                    #    bgr, item_description_rect, "debug/" + item_slot_hover + "_description.jpg")
+
+                    if self.api_key:
+                        self.post_item(bgr, item_slot_hover,
+                                       item_rect, item_description_rect)
                 else:
                     item_slot_hover = None
 
@@ -94,3 +100,19 @@ class DiabloRunClient:
 
     def stop(self):
         self.running = False
+
+    def post_item(self, bgr, slot, item_rect, description_rect):
+        data = bytes('{ "container": "character", "slot": "' +
+                     slot + '", "item_jpg": "', "ascii")
+        data += base64.b64encode(get_jpg(bgr, item_rect).getbuffer())
+        data += bytes('", "description_jpg": "', "ascii")
+        data += base64.b64encode(get_jpg(bgr,
+                                         description_rect).getbuffer())
+        data += bytes('" }', "ascii")
+
+        req = request.Request(self.api_url + "/d2r/item", data)
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('Authorization', 'Bearer ' + self.api_key)
+        res = request.urlopen(req)
+
+        print(res.read())

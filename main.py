@@ -21,7 +21,7 @@ ls_client_thread = threading.Thread(target=ls_client.run)
 ls_client_thread.start()
 
 # Start DiabloRun client thread
-api_url = config.get("diablorun", "api_url", fallback="api.diablo.run")
+api_url = config.get("diablorun", "api_url", fallback="https://api.diablo.run")
 api_key = config.get("diablorun", "api_key", fallback=None)
 
 dr_client = DiabloRunClient(api_url, api_key)
