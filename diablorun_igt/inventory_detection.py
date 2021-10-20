@@ -5,8 +5,10 @@ from diablorun_igt.utils import bgr_to_gray
 # BGR
 ITEM_SLOT_COLOR = np.array((1, 1, 1))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
-ITEM_DESCRIPTION_MAX_GRAY = 12
-ITEM_DESCRIPTION_PADDING = 3
+ITEM_DESCRIPTION_MAX_GRAY = 15
+ITEM_DESCRIPTION_PADDING = 5
+ITEM_DESCRIPTION_MIN_WIDTH = 100
+ITEM_DESCRIPTION_MIN_HEIGHT = 30
 
 ITEM_SLOT_RECT_1920_1080 = {
     'helm': [1527, 108, 1640, 221],
@@ -88,10 +90,15 @@ def get_item_description_edges(bgr, axis):
 
 def get_item_description_rect(bgr, item_rect):
     item_left, _item_top, item_right, _item_bottom = item_rect
+    center = (item_left + item_right) // 2
 
-    top, bottom = get_item_description_edges(bgr[:, item_left:item_right], 0)
+    top, bottom = get_item_description_edges(
+        bgr[:,
+            min(item_left, center-ITEM_DESCRIPTION_MIN_WIDTH//2):
+            max(item_right, center + ITEM_DESCRIPTION_MIN_WIDTH//2)
+            ], 0)
 
-    if top == 0 or bottom == bgr.shape[0] - 1:
+    if top == 0 or bottom == bgr.shape[0] - 1 or (bottom - top) < ITEM_DESCRIPTION_MIN_HEIGHT:
         return None
 
     left, right = get_item_description_edges(bgr[top:bottom, :], 1)
