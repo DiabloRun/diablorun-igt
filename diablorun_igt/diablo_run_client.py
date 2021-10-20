@@ -4,6 +4,7 @@ from PIL import Image
 from queue import Queue
 
 from diablorun_igt.inventory_detection import get_item_slot_coordinates, get_item_slot_hover
+from diablorun_igt.utils import bgr_to_rgb
 
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
@@ -74,9 +75,9 @@ class DiabloRunClient:
             self.status = "playing"
 
     def save_rgb(self, bgr, path):
+        rgb = bgr_to_rgb(bgr)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        rgb = Image.fromarray(bgr[:, :, ::-1].astype('uint8'), 'RGB')
-        rgb.save(path)
+        Image.fromarray(rgb.astype('uint8'), 'RGB').save(path)
 
         print("saved", path)
 

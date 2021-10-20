@@ -1,9 +1,12 @@
 import numpy as np
-from PIL import Image
+
+from diablorun_igt.utils import bgr_to_gray
 
 # BGR
 ITEM_SLOT_COLOR = np.array((1, 1, 1))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
+ITEM_DESCRIPTION_MAX_GRAY = 12
+ITEM_DESCRIPTION_PADDING = 5
 
 ITEM_SLOT_COORDINATES_1080 = {
     'helm': [1527, 108, 113, 113],
@@ -65,3 +68,28 @@ def get_item_slot_hover(bgr, coordinates):
             #print("hover", slot, slot_corner_colors)
 
     # print(n)
+
+
+def get_item_description_edges(bgr, axis):
+    # Get item description dark background mask
+    mask = bgr_to_gray(bgr) <= ITEM_DESCRIPTION_MAX_GRAY
+
+    # Find horizontal lines where background is fully detected
+    opposite_axis = 1 - axis
+    mask = mask.sum(axis=opposite_axis) == mask.shape[opposite_axis]
+
+    # Find padding-sized blocks of adjacent horizontal lines
+    mask = np.convolve(mask, np.ones(ITEM_DESCRIPTION_PADDING), "valid")
+    mask = mask == ITEM_DESCRIPTION_PADDING
+
+    # top and bottom are the first and last instances of padding that were found
+    return mask.argmax(), bgr.shape[axis] - np.flip(mask).argmax()
+
+
+def get_item_description_rect(bgr, item_rect):
+    x, y, w, h = item_rect
+
+    top, bottom = get_item_description_edges(bgr[:, x:x+w], 0)
+    left, right = get_item_description_edges(bgr[top:bottom, :], 1)
+
+    return left, top, right, bottom
