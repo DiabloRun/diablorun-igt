@@ -82,7 +82,7 @@ def get_item_description_edges(bgr, axis):
     mask = np.convolve(mask, np.ones(ITEM_DESCRIPTION_PADDING), "valid")
     mask = mask == ITEM_DESCRIPTION_PADDING
 
-    # top and bottom are the first and last instances of padding that were found
+    # the edges are the first and last instances of padding that were found
     return mask.argmax(), bgr.shape[axis] - np.flip(mask).argmax()
 
 
@@ -90,6 +90,10 @@ def get_item_description_rect(bgr, item_rect):
     item_left, _item_top, item_right, _item_bottom = item_rect
 
     top, bottom = get_item_description_edges(bgr[:, item_left:item_right], 0)
+
+    if top == 0 or bottom == bgr.shape[0] - 1:
+        return None
+
     left, right = get_item_description_edges(bgr[top:bottom, :], 1)
 
     return left, top, right, bottom

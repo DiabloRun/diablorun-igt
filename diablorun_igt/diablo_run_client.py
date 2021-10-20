@@ -58,22 +58,23 @@ class DiabloRunClient:
             item_slot_rects = get_item_slot_rects(bgr)
             item_slot_hover = get_item_slot_hover(bgr, item_slot_rects)
 
-            if item_slot_hover:
-                self.status = "hover " + item_slot_hover
+            if item_slot_hover and item_slot_hover != self.previous_item_slot_hover:
+                item_rect = item_slot_rects[item_slot_hover]
+                item_description_rect = get_item_description_rect(
+                    bgr, item_rect)
 
-                if item_slot_hover != self.previous_item_slot_hover:
-                    item_rect = item_slot_rects[item_slot_hover]
-                    item_description_rect = get_item_description_rect(
-                        bgr, item_rect)
-
+                if item_description_rect != None:
                     self.save_rgb_rect(
                         bgr, item_rect, "debug/" + item_slot_hover + ".jpg")
                     self.save_rgb_rect(
                         bgr, item_description_rect, "debug/" + item_slot_hover + "_description.jpg")
+                else:
+                    item_slot_hover = None
 
             self.previous_item_slot_hover = item_slot_hover
 
             if item_slot_hover:
+                self.status = "hover " + item_slot_hover
                 continue
 
             # Nothing of interest detected
