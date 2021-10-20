@@ -3,7 +3,7 @@ import os
 from PIL import Image
 from queue import Queue
 
-from diablorun_igt.inventory_detection import get_item_slot_coordinates, get_item_slot_hover
+from diablorun_igt.inventory_detection import get_item_description_rect, get_item_slot_hover, get_item_slot_rects
 from diablorun_igt.utils import bgr_to_rgb
 
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
@@ -55,16 +55,21 @@ class DiabloRunClient:
                 continue
 
             # Check item hover
-            item_slot_coords = get_item_slot_coordinates(bgr)
-            item_slot_hover = get_item_slot_hover(bgr, item_slot_coords)
+            item_slot_rects = get_item_slot_rects(bgr)
+            item_slot_hover = get_item_slot_hover(bgr, item_slot_rects)
 
             if item_slot_hover:
                 self.status = "hover " + item_slot_hover
 
                 if item_slot_hover != self.previous_item_slot_hover:
-                    x, y, w, h = item_slot_coords[item_slot_hover]
-                    self.save_rgb(bgr[y:y+h, x:x+w],
-                                  "debug/" + item_slot_hover + ".jpg")
+                    item_rect = item_slot_rects[item_slot_hover]
+                    item_description_rect = get_item_description_rect(
+                        bgr, item_rect)
+
+                    self.save_rgb_rect(
+                        bgr, item_rect, "debug/" + item_slot_hover + ".jpg")
+                    self.save_rgb_rect(
+                        bgr, item_description_rect, "debug/" + item_slot_hover + "_description.jpg")
 
             self.previous_item_slot_hover = item_slot_hover
 
@@ -80,6 +85,10 @@ class DiabloRunClient:
         Image.fromarray(rgb.astype('uint8'), 'RGB').save(path)
 
         print("saved", path)
+
+    def save_rgb_rect(self, bgr, rect, path):
+        l, t, r, b = rect
+        self.save_rgb(bgr[t:b, l:r], path)
 
     def stop(self):
         self.running = False

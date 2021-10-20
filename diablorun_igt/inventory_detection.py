@@ -8,53 +8,53 @@ ITEM_HOVER_COLOR = np.array((10, 30, 6))
 ITEM_DESCRIPTION_MAX_GRAY = 12
 ITEM_DESCRIPTION_PADDING = 5
 
-ITEM_SLOT_COORDINATES_1080 = {
-    'helm': [1527, 108, 113, 113],
-    'primary_left': [1310, 140, 113, 222],
-    'primary_right': [1746, 140, 113, 222],
-    'body_armor': [1527, 249, 113, 170],
-    'gloves': [1309, 391, 113, 113],
-    'belt': [1527, 447, 113, 56],
-    'boots': [1745, 391, 113, 113],
-    'amulet': [1663, 206, 56, 56],
-    'ring_left': [1447, 447, 56, 56],
-    'ring_right': [1663, 447, 56, 56]
+ITEM_SLOT_RECT_1920_1080 = {
+    'helm': [1527, 108, 1640, 221],
+    'primary_left': [1310, 140, 1423, 362],
+    'primary_right': [1746, 140, 1859, 362],
+    'body_armor': [1527, 249, 1640, 419],
+    'gloves': [1309, 391, 1422, 504],
+    'belt': [1527, 447, 1640, 503],
+    'boots': [1745, 391, 1858, 504],
+    'amulet': [1663, 206, 1719, 262],
+    'ring_left': [1447, 447, 1503, 503],
+    'ring_right': [1663, 447, 1719, 503],
 }
 
-ITEM_SLOT_COORDINATES_768 = {
-    'helm': (1086, 77, 80, 80),
-    'primary_left': (932, 99, 80, 158),
-    'primary_right': (1242, 99, 80, 158),
-    'body_armor': (1086, 177, 80, 121),
-    'gloves': (932, 278, 80, 80),
-    'belt': (1087, 318, 80, 40),
-    'boots': (1242, 278, 80, 80),
-    'amulet': (1184, 146, 40, 40),
-    'ring_left': (1029, 318, 40, 40),
-    'ring_right': (1184, 318, 40, 40)
+ITEM_SLOT_RECT_1366_768 = {
+    'helm': [1086, 77, 1166, 157],
+    'primary_left': [932, 99, 1012, 257],
+    'primary_right': [1242, 99, 1322, 220],
+    'body_armor': [1086, 177, 1166, 298],
+    'gloves': [932, 278, 1012, 358],
+    'belt': [1087, 318, 1167, 358],
+    'boots': [1242, 278, 1322, 358],
+    'amulet': [1184, 146, 1224, 186],
+    'ring_left': [1029, 318, 1069, 358],
+    'ring_right': [1184, 318, 1224, 358],
 }
 
 
-def get_item_slot_coordinates(bgr):
+def get_item_slot_rects(bgr):
     if bgr.shape[0] == 1080:
-        return ITEM_SLOT_COORDINATES_1080
+        return ITEM_SLOT_RECT_1920_1080
     elif bgr.shape[0] == 768:
-        return ITEM_SLOT_COORDINATES_768
+        return ITEM_SLOT_RECT_1366_768
 
 
-def get_item_slot_hover(bgr, coordinates):
-    if coordinates is None:
+def get_item_slot_hover(bgr, rects):
+    if rects is None:
         return None
     #n = 0
 
-    for slot in coordinates:
-        x, y, w, h = coordinates[slot]
+    for slot in rects:
+        l, t, r, b = rects[slot]
 
         slot_corner_colors = np.array((
-            bgr[y+1, x+1],
-            bgr[y+1, x+w-2],
-            bgr[y+h-2, x+w-2],
-            bgr[y+h-2, x+w-2]
+            bgr[t+1, l+1],
+            bgr[t+1, r-1],
+            bgr[b-1, l+1],
+            bgr[b-1, r-1]
         ))
 
         #slot_image = rgb[y:y+h, x:x+w]
@@ -87,9 +87,9 @@ def get_item_description_edges(bgr, axis):
 
 
 def get_item_description_rect(bgr, item_rect):
-    x, y, w, h = item_rect
+    item_left, _item_top, item_right, _item_bottom = item_rect
 
-    top, bottom = get_item_description_edges(bgr[:, x:x+w], 0)
+    top, bottom = get_item_description_edges(bgr[:, item_left:item_right], 0)
     left, right = get_item_description_edges(bgr[top:bottom, :], 1)
 
     return left, top, right, bottom
