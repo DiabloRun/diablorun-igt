@@ -11,7 +11,7 @@ from . import loading_detection
 
 
 class DiabloRunClient:
-    def __init__(self, is_loading_output=None):
+    def __init__(self, api_url="https://api.diablo.run", api_key=None):
         self.running = False
         self.changes = Queue()
         self.state = {
@@ -19,8 +19,9 @@ class DiabloRunClient:
         }
 
         self.status = "not found"
-        self.is_loading_output = is_loading_output
         self.previous_item_slot_hover = None
+        self.api_url = api_url
+        self.api_key = api_key
 
     def run(self):
         self.running = True
@@ -46,9 +47,9 @@ class DiabloRunClient:
                 self.changes.put_nowait(
                     {"event": "is_loading_change", "value": is_loading})
 
-                if is_loading and self.is_loading_output:
-                    self.save_rgb(bgr, os.path.join(self.is_loading_output,
-                                                    str(time.time()) + ".jpg"))
+                # if is_loading and self.is_loading_output:
+                #    self.save_rgb(bgr, os.path.join(self.is_loading_output,
+                #                                    str(time.time()) + ".jpg"))
 
             if is_loading:
                 self.status = "loading"

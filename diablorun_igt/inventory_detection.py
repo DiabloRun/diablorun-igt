@@ -11,7 +11,7 @@ ITEM_DESCRIPTION_MIN_WIDTH = 100
 ITEM_DESCRIPTION_MIN_HEIGHT = 30
 
 ITEM_SLOT_RECT_1920_1080 = {
-    'helm': [1527, 108, 1640, 221],
+    'head': [1527, 108, 1640, 221],
     'primary_left': [1310, 140, 1423, 362],
     'primary_right': [1746, 140, 1859, 362],
     'body_armor': [1527, 249, 1640, 419],
@@ -24,7 +24,7 @@ ITEM_SLOT_RECT_1920_1080 = {
 }
 
 ITEM_SLOT_RECT_1366_768 = {
-    'helm': [1086, 77, 1166, 157],
+    'head': [1086, 77, 1166, 157],
     'primary_left': [932, 99, 1012, 257],
     'primary_right': [1242, 99, 1322, 220],
     'body_armor': [1086, 177, 1166, 298],

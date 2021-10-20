@@ -61,3 +61,7 @@ if sys.platform == "win32":
 
             # Convert to np array
             return np.frombuffer(bmpstr, dtype=np.uint8).reshape(height, width, 4)[..., :3]
+
+elif sys.platform == "darwin":
+    class WindowCapture:
+        pass
