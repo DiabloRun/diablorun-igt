@@ -6,7 +6,7 @@ from diablorun_igt.utils import bgr_to_gray
 ITEM_SLOT_COLOR = np.array((1, 1, 1))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
 ITEM_DESCRIPTION_MAX_GRAY = 12
-ITEM_DESCRIPTION_PADDING = 5
+ITEM_DESCRIPTION_PADDING = 3
 
 ITEM_SLOT_RECT_1920_1080 = {
     'helm': [1527, 108, 1640, 221],
