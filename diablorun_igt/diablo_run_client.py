@@ -21,6 +21,7 @@ class DiabloRunClient:
         self.bgr = None
         self.inventory_bgr = None
         self.empty_slots = {"character": []}
+        self.resend_item_image = None
 
         self.is_loading = False
         self.hovered_item = None
@@ -59,6 +60,7 @@ class DiabloRunClient:
         if inventory_detection.is_inventory_open(self.bgr):
             self.inventory_bgr = self.bgr
 
+            # Check for empty slots
             empty_slots = inventory_detection.get_empty_item_slots(self.bgr)
             removed_items = []
 
@@ -71,6 +73,14 @@ class DiabloRunClient:
                 self.post_remove_items(removed_items)
 
             self.empty_slots = empty_slots
+
+            # Check for item image to resend
+            if self.resend_item_image:
+                container, slot = self.resend_item_image
+                rects = inventory_detection.get_item_slot_rects(self.bgr)
+                self.post_item(container, slot, get_jpg(
+                    self.bgr, rects[slot]), None)
+                self.resend_item_image = None
 
     def handle_item_hover(self):
         if not self.api_key or self.is_loading or not self.cursor or self.inventory_bgr is None:
@@ -92,19 +102,12 @@ class DiabloRunClient:
             if self.hovered_item and container == self.hovered_item[0] and slot == self.hovered_item[1] and hovered_item_has_description == self.hovered_item_has_description and hovered_item_is_highlighted == self.hovered_item_is_highlighted:
                 return
 
-            # if description_rect is None:
-            #    hovered_item = None
-            # else:
-                # save_rgb(self.prev_bgr, "debug/" + slot + ".jpg", item_rect)
-                # save_rgb(self.bgr, "debug/" + slot +
-                #         "_description.jpg", description_rect)
-
             if description_rect or hovered_item_is_highlighted:
                 self.post_item(container, slot, get_jpg(
                     self.inventory_bgr, item_rect), get_jpg(self.last_item_description_bgr, self.last_item_description_rect))
 
-            # if description_rect is None:
-            #    hovered_item = None
+                if not description_rect:
+                    self.resend_item_image = (container, slot)
 
         self.hovered_item = hovered_item
         self.hovered_item_has_description = hovered_item_has_description
@@ -156,9 +159,11 @@ class DiabloRunClient:
         try:
             data = bytes('{ "container": "' + container + '", "slot": "' +
                          slot + '", "item_jpg": "', "ascii")
-            data += base64.b64encode(item_jpg.getbuffer())
+            if item_jpg is not None:
+                data += base64.b64encode(item_jpg.getbuffer())
             data += bytes('", "description_jpg": "', "ascii")
-            data += base64.b64encode(description_jpg.getbuffer())
+            if description_jpg is not None:
+                data += base64.b64encode(description_jpg.getbuffer())
             data += bytes('" }', "ascii")
 
             req = urllib.request.Request(self.api_url + "/d2r/item", data)
@@ -168,7 +173,7 @@ class DiabloRunClient:
 
             print("item", container, slot, res.read())
         except Exception as error:
-            print(error.message)
+            print(error)
             pass
 
     def post_remove_items(self, removed_items):
