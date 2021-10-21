@@ -1,9 +1,10 @@
 import time
 import os
+import urllib
 from PIL import Image
 from queue import Queue
 import base64
-from urllib import request
+import urllib
 
 from diablorun_igt.inventory_detection import get_item_description_rect, get_item_slot_hover, get_item_slot_rects
 from diablorun_igt.utils import bgr_to_rgb, get_jpg
@@ -102,17 +103,21 @@ class DiabloRunClient:
         self.running = False
 
     def post_item(self, bgr, slot, item_rect, description_rect):
-        data = bytes('{ "container": "character", "slot": "' +
-                     slot + '", "item_jpg": "', "ascii")
-        data += base64.b64encode(get_jpg(bgr, item_rect).getbuffer())
-        data += bytes('", "description_jpg": "', "ascii")
-        data += base64.b64encode(get_jpg(bgr,
-                                         description_rect).getbuffer())
-        data += bytes('" }', "ascii")
+        try:
+            data = bytes('{ "container": "character", "slot": "' +
+                         slot + '", "item_jpg": "', "ascii")
+            data += base64.b64encode(get_jpg(bgr, item_rect).getbuffer())
+            data += bytes('", "description_jpg": "', "ascii")
+            data += base64.b64encode(get_jpg(bgr,
+                                             description_rect).getbuffer())
+            data += bytes('" }', "ascii")
 
-        req = request.Request(self.api_url + "/d2r/item", data)
-        req.add_header('Content-Type', 'application/json')
-        req.add_header('Authorization', 'Bearer ' + self.api_key)
-        res = request.urlopen(req)
+            req = urllib.request.Request(self.api_url + "/d2r/item", data)
+            req.add_header('Content-Type', 'application/json')
+            req.add_header('Authorization', 'Bearer ' + self.api_key)
+            res = urllib.request.urlopen(req)
 
-        print(res.read())
+            print(res.read())
+        except Exception as error:
+            print(error.msg)
+            pass

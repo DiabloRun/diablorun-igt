@@ -1,12 +1,13 @@
 import numpy as np
 
 from diablorun_igt.utils import bgr_to_gray
+from .utils import save_gray
 
 # BGR
-ITEM_SLOT_COLOR = np.array((1, 1, 1))
+ITEM_SLOT_COLOR = np.array((2, 2, 2))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
 ITEM_DESCRIPTION_MAX_GRAY = 13
-ITEM_DESCRIPTION_PADDING = 7
+ITEM_DESCRIPTION_PADDING = 5
 ITEM_DESCRIPTION_MIN_WIDTH = 100
 ITEM_DESCRIPTION_MIN_HEIGHT = 30
 
@@ -72,17 +73,29 @@ def get_item_slot_hover(bgr, rects):
     # print(n)
 
 
-def get_item_description_edges(bgr, axis):
+def get_item_description_bg_mask(bgr):
+    return np.all(np.abs(bgr - ITEM_SLOT_COLOR) < 3, axis=2)
+
+
+def get_item_description_mask(bgr, axis):
+    opposite_axis = 1 - axis
+
     # Get item description dark background mask
-    mask = bgr_to_gray(bgr) <= ITEM_DESCRIPTION_MAX_GRAY
+    #mask = bgr_to_gray(bgr) <= ITEM_DESCRIPTION_MAX_GRAY
+    mask = np.all(np.abs(bgr - ITEM_SLOT_COLOR) < 3, axis=2)
 
     # Find horizontal lines where background is fully detected
-    opposite_axis = 1 - axis
-    mask = mask.sum(axis=opposite_axis) == mask.shape[opposite_axis]
+    mask = mask.sum(axis=opposite_axis) > mask.shape[opposite_axis] * .9
 
     # Find padding-sized blocks of adjacent horizontal lines
     mask = np.convolve(mask, np.ones(ITEM_DESCRIPTION_PADDING), "valid")
     mask = mask == ITEM_DESCRIPTION_PADDING
+
+    return mask
+
+
+def get_item_description_edges(bgr, axis):
+    mask = get_item_description_mask(bgr, axis)
 
     # the edges are the first and last instances of padding that were found
     return mask.argmax(), bgr.shape[axis] - np.flip(mask).argmax()
@@ -94,13 +107,33 @@ def get_item_description_rect(bgr, item_rect):
 
     top, bottom = get_item_description_edges(
         bgr[:,
-            min(item_left, center-ITEM_DESCRIPTION_MIN_WIDTH//2):
-            max(item_right, center + ITEM_DESCRIPTION_MIN_WIDTH//2)
+            min(item_left, center - 25):
+            max(item_right, center + 25)
             ], 0)
+
+    #left, right = center - 250, center + 250
+
+    mask = np.all(np.abs(bgr[top:bottom, :] - ITEM_SLOT_COLOR) < 3, axis=2)
+    mask = np.all(np.abs(bgr[:,
+                             min(item_left, center - 25):
+                             max(item_right, center + 25)
+                             ] - ITEM_SLOT_COLOR) < 3, axis=2)
+    print(mask.shape)
+    #mask = np.all(np.abs(bgr - ITEM_SLOT_COLOR) < 3, axis=2)
+    opposite_axis = 1
+    mask = mask.sum(axis=opposite_axis) > mask.shape[opposite_axis] * .9
+    print(mask.shape)
+
+    # mask = np.convolve(mask, np.ones(ITEM_DESCRIPTION_PADDING),
+    #                   "valid") == ITEM_DESCRIPTION_PADDING
+
+    #save_gray(mask * 255, "debug/gray.jpg")
+    save_gray(np.tile(mask, (100, 1)) * 255, "debug/gray.jpg")
 
     if top == 0 or bottom == bgr.shape[0] - 1 or (bottom - top) < ITEM_DESCRIPTION_MIN_HEIGHT:
         return None
 
+    vcenter = (top + bottom) // 2
     left, right = get_item_description_edges(bgr[top:bottom, :], 1)
 
     return left, top, right, bottom
