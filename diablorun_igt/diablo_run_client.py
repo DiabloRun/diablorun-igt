@@ -20,9 +20,14 @@ class DiabloRunClient:
         self.cursor = None
         self.bgr = None
         self.inventory_bgr = None
+        self.empty_slots = {"character": []}
+
         self.is_loading = False
         self.hovered_item = None
-        self.empty_slots = {"character": []}
+        self.hovered_item_has_description = False
+        self.hovered_item_is_highlighted = False
+        self.last_item_description_bgr = None
+        self.last_item_description_rect = None
 
         self.status = "not found"
         self.api_url = api_url
@@ -48,6 +53,9 @@ class DiabloRunClient:
             self.status = "loading"
 
     def handle_inventory(self):
+        if not self.api_key or self.is_loading:
+            return
+
         if inventory_detection.is_inventory_open(self.bgr):
             self.inventory_bgr = self.bgr
 
@@ -65,32 +73,42 @@ class DiabloRunClient:
             self.empty_slots = empty_slots
 
     def handle_item_hover(self):
-        if self.is_loading or not self.cursor or self.inventory_bgr is None:
+        if not self.api_key or self.is_loading or not self.cursor or self.inventory_bgr is None:
             return
 
         hovered_item = get_hovered_item(self.bgr, self.cursor)
+        description_rect = get_item_description_rect(self.bgr, self.cursor)
+        hovered_item_has_description = hovered_item and description_rect is not None
+        hovered_item_is_highlighted = hovered_item and inventory_detection.is_item_rect_highlighted(
+            self.bgr, hovered_item[2])
+
+        if description_rect:
+            self.last_item_description_bgr = self.bgr
+            self.last_item_description_rect = description_rect
 
         if hovered_item:
             container, slot, item_rect = hovered_item
-            self.status = slot
 
-            if self.hovered_item and container == self.hovered_item[0] and slot == self.hovered_item[1]:
+            if self.hovered_item and container == self.hovered_item[0] and slot == self.hovered_item[1] and hovered_item_has_description == self.hovered_item_has_description and hovered_item_is_highlighted == self.hovered_item_is_highlighted:
                 return
 
-            description_rect = get_item_description_rect(self.bgr, self.cursor)
-
-            if description_rect is None:
-                hovered_item = None
-            else:
+            # if description_rect is None:
+            #    hovered_item = None
+            # else:
                 # save_rgb(self.prev_bgr, "debug/" + slot + ".jpg", item_rect)
                 # save_rgb(self.bgr, "debug/" + slot +
                 #         "_description.jpg", description_rect)
 
-                if self.api_key:
-                    self.post_item(container, slot, get_jpg(
-                        self.inventory_bgr, item_rect), get_jpg(self.bgr, description_rect))
+            if description_rect or hovered_item_is_highlighted:
+                self.post_item(container, slot, get_jpg(
+                    self.inventory_bgr, item_rect), get_jpg(self.last_item_description_bgr, self.last_item_description_rect))
+
+            # if description_rect is None:
+            #    hovered_item = None
 
         self.hovered_item = hovered_item
+        self.hovered_item_has_description = hovered_item_has_description
+        self.hovered_item_is_highlighted = hovered_item_is_highlighted
 
     def run(self):
         self.running = True
@@ -148,7 +166,7 @@ class DiabloRunClient:
             req.add_header('Authorization', 'Bearer ' + self.api_key)
             res = urllib.request.urlopen(req)
 
-            print(res.read())
+            print("item", container, slot, res.read())
         except Exception as error:
             print(error.message)
             pass
@@ -169,7 +187,7 @@ class DiabloRunClient:
             req.add_header('Authorization', 'Bearer ' + self.api_key)
             res = urllib.request.urlopen(req)
 
-            print(res.read())
+            print("remove_items", res.read())
         except Exception as error:
             print(error)
             pass

@@ -66,6 +66,19 @@ def get_hovered_item(bgr, cursor):
             return "character", slot, rects[slot]
 
 
+def is_item_rect_highlighted(bgr, item_rect):
+    l, t, r, b = item_rect
+
+    slot_corner_colors = np.array((
+        bgr[t+1, l+1],
+        bgr[t+1, r-1],
+        bgr[b-1, l+1],
+        bgr[b-1, r-1]
+    ))
+
+    return np.sum(np.all(np.abs(slot_corner_colors - ITEM_HOVER_COLOR) < 10, axis=1)) > 1
+
+
 def is_inventory_open(bgr):
     rects = get_item_slot_rects(bgr)
 
