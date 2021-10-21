@@ -22,6 +22,7 @@ class DiabloRunClient:
         self.inventory_bgr = None
         self.is_loading = False
         self.hovered_item = None
+        self.empty_slots = {"character": []}
 
         self.status = "not found"
         self.api_url = api_url
@@ -49,6 +50,19 @@ class DiabloRunClient:
     def handle_inventory(self):
         if inventory_detection.is_inventory_open(self.bgr):
             self.inventory_bgr = self.bgr
+
+            empty_slots = inventory_detection.get_empty_item_slots(self.bgr)
+            removed_items = []
+
+            for container in empty_slots:
+                for slot in empty_slots[container]:
+                    if slot not in self.empty_slots[container]:
+                        removed_items.append((container, slot))
+
+            if len(removed_items):
+                self.post_remove_items(removed_items)
+
+            self.empty_slots = empty_slots
 
     def handle_item_hover(self):
         if self.is_loading or not self.cursor or self.inventory_bgr is None:
@@ -137,4 +151,25 @@ class DiabloRunClient:
             print(res.read())
         except Exception as error:
             print(error.message)
+            pass
+
+    def post_remove_items(self, removed_items):
+        try:
+            data = bytes('[', "ascii")
+
+            for i, (container, slot) in enumerate(removed_items):
+                if i > 0:
+                    data += bytes(",", "ascii")
+                data += bytes('["' + container + '", "' + slot + '"]', "ascii")
+            data += bytes(']', "ascii")
+
+            req = urllib.request.Request(
+                self.api_url + "/d2r/remove-items", data)
+            req.add_header('Content-Type', 'application/json')
+            req.add_header('Authorization', 'Bearer ' + self.api_key)
+            res = urllib.request.urlopen(req)
+
+            print(res.read())
+        except Exception as error:
+            print(error)
             pass

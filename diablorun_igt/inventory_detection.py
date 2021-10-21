@@ -4,6 +4,7 @@ import numpy as np
 # BGR
 ITEM_SLOT_COLOR = np.array((2, 2, 2))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
+EMPTY_SLOT_COLOR = np.array((20, 20, 20))
 
 ITEM_SLOT_RECT_1920_1080 = {
     'head': [1527, 108, 1640, 221],
@@ -29,6 +30,19 @@ ITEM_SLOT_RECT_1366_768 = {
     'amulet': [1184, 146, 1224, 186],
     'ring_left': [1029, 318, 1069, 358],
     'ring_right': [1184, 318, 1224, 358],
+}
+
+ITEM_SLOT_EMPTY_CENTER = {
+    'head': ((26, 26, 25), 2),
+    'primary_left': ((13, 13, 13), 2),
+    'primary_right': ((13, 13, 13), 2),
+    'body_armor': ((28, 29, 28), 6),
+    'gloves': ((18, 18, 17), 3),
+    'belt': ((36, 36, 36), 12),
+    'boots': ((25, 24, 23), 4),
+    'amulet': ((16, 15, 15), 3),
+    'ring_left': ((29, 29, 28), 3),
+    'ring_right': ((29, 29, 28), 3)
 }
 
 
@@ -58,8 +72,6 @@ def is_inventory_open(bgr):
     if rects is None:
         return False
 
-    n = 0
-
     for slot in rects:
         l, t, r, b = rects[slot]
 
@@ -70,10 +82,29 @@ def is_inventory_open(bgr):
             bgr[b-1, r-1]
         ))
 
-        if np.sum(np.all(np.abs(slot_corner_colors - ITEM_SLOT_COLOR) < 10, axis=1)) > 1:
-            n += 1
+        if np.sum(np.all(np.abs(slot_corner_colors - ITEM_SLOT_COLOR) < 10, axis=1)) < 2:
+            return False
 
-    return n == 10
+    return True
+
+
+def get_empty_item_slots(bgr):
+    rects = get_item_slot_rects(bgr)
+
+    if rects is None:
+        return False
+
+    empty_slots = {"character": []}
+
+    for slot in rects:
+        l, t, r, b = rects[slot]
+        hc, vc = (l + r) // 2, (t + b) // 2
+        empty_color, empty_color_range = ITEM_SLOT_EMPTY_CENTER[slot]
+
+        if (np.abs(bgr[vc, hc] - empty_color) <= empty_color_range).all():
+            empty_slots["character"].append(slot)
+
+    return empty_slots
 
 
 def get_item_description_bg_mask(bgr):

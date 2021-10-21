@@ -18,12 +18,6 @@ def get_bgr(image_path):
     return np.array(image)[..., :3][:, :, ::-1]
 
 
-def draw_mask_overlay(bgr, mask, color=(255, 255, 255)):
-    bgr[:, :, 0] = mask * color[0]
-    bgr[:, :, 1] = mask * color[1]
-    bgr[:, :, 2] = mask * color[2]
-
-
 def draw_color_overlay(bgr, color):
     bgr[:, :, 0] = color[0]
     bgr[:, :, 1] = color[1]
@@ -151,23 +145,3 @@ if __name__ == "__main__":
 
             save_rgb(
                 bgr_docs, "docs/item_description_detection/step8_done.jpg")
-
-        """
-        rects = get_item_slot_rects(bgr)
-        slot = get_item_slot_hover(bgr, rects)
-
-        if slot != None:
-            item_rect = item_l, item_t, item_r, item_b = rects[slot]
-            description_rect = get_item_description_rect(
-                bgr, rects[slot])
-
-            if description_rect is None:
-                print(image_name, "rect none")
-                continue
-
-            left, top, right, bottom = description_rect
-
-            save_rgb(bgr[top:bottom, left:right], image_name + "_desc.png")
-            # save_rgb(bgr[item_t:item_b, item_l:item_r],
-            #         image_name + "_item.png")
-        """
