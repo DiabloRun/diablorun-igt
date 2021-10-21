@@ -3,6 +3,13 @@ import PIL.Image
 import io
 
 
+def resize_image(bgr, size):
+    image = PIL.Image.fromarray(bgr.astype('uint8'), 'RGB')
+    image = image.resize(size, PIL.Image.NEAREST)
+
+    return np.asarray(image)
+
+
 def bgr_to_rgb(bgr):
     return bgr[:, :, ::-1]
 

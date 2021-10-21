@@ -1,7 +1,5 @@
 import numpy as np
 
-from diablorun_igt.utils import bgr_to_gray
-from .utils import save_gray
 
 # BGR
 ITEM_SLOT_COLOR = np.array((2, 2, 2))
@@ -44,6 +42,9 @@ def get_item_slot_rects(bgr):
 def get_hovered_item(bgr, cursor):
     rects = get_item_slot_rects(bgr)
 
+    if rects is None:
+        return None
+
     for slot in rects:
         l, t, r, b = rects[slot]
 
@@ -51,11 +52,13 @@ def get_hovered_item(bgr, cursor):
             return "character", slot, rects[slot]
 
 
-"""
-def get_item_slot_hover(bgr, rects):
+def is_inventory_open(bgr):
+    rects = get_item_slot_rects(bgr)
+
     if rects is None:
-        return None
-    #n = 0
+        return False
+
+    n = 0
 
     for slot in rects:
         l, t, r, b = rects[slot]
@@ -67,18 +70,10 @@ def get_item_slot_hover(bgr, rects):
             bgr[b-1, r-1]
         ))
 
-        #slot_image = rgb[y:y+h, x:x+w]
-        #Image.fromarray(slot_image).save("debug/" + slot + ".png")
+        if np.sum(np.all(np.abs(slot_corner_colors - ITEM_SLOT_COLOR) < 10, axis=1)) > 1:
+            n += 1
 
-        # if np.sum(np.all(np.abs(slot_corner_colors - ITEM_SLOT_COLOR) < 10, axis=1)) > 1:
-        #    n += 1
-
-        if np.sum(np.all(np.abs(slot_corner_colors - ITEM_HOVER_COLOR) < 10, axis=1)) > 1:
-            return slot
-            #print("hover", slot, slot_corner_colors)
-
-    # print(n)
-"""
+    return n == 10
 
 
 def get_item_description_bg_mask(bgr):

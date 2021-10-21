@@ -3,9 +3,10 @@ import urllib
 from queue import Queue
 import base64
 import urllib.request
+from diablorun_igt import inventory_detection
 
 from diablorun_igt.inventory_detection import get_hovered_item, get_item_description_rect
-from diablorun_igt.utils import get_jpg
+from diablorun_igt.utils import get_jpg, resize_image
 
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
@@ -18,7 +19,7 @@ class DiabloRunClient:
 
         self.cursor = None
         self.bgr = None
-        self.prev_bgr = None
+        self.inventory_bgr = None
         self.is_loading = False
         self.hovered_item = None
 
@@ -45,8 +46,12 @@ class DiabloRunClient:
         if is_loading:
             self.status = "loading"
 
+    def handle_inventory(self):
+        if inventory_detection.is_inventory_open(self.bgr):
+            self.inventory_bgr = self.bgr
+
     def handle_item_hover(self):
-        if self.is_loading or not self.cursor:
+        if self.is_loading or not self.cursor or self.inventory_bgr is None:
             return
 
         hovered_item = get_hovered_item(self.bgr, self.cursor)
@@ -69,7 +74,7 @@ class DiabloRunClient:
 
                 if self.api_key:
                     self.post_item(container, slot, get_jpg(
-                        self.prev_bgr, item_rect), get_jpg(self.bgr, description_rect))
+                        self.inventory_bgr, item_rect), get_jpg(self.bgr, description_rect))
 
         self.hovered_item = hovered_item
 
@@ -81,7 +86,6 @@ class DiabloRunClient:
         window_capture = WindowCapture()
 
         while self.running:
-            self.prev_bgr = self.bgr
             time.sleep(0.01)
 
             try:
@@ -96,6 +100,9 @@ class DiabloRunClient:
 
             # Check loading
             self.handle_is_loading()
+
+            # Check inventory
+            self.handle_inventory()
 
             # Check item hover
             self.handle_item_hover()
