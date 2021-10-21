@@ -1,7 +1,6 @@
 import numpy as np
-import PIL
+import PIL.Image
 import io
-import os
 
 
 def bgr_to_rgb(bgr):
@@ -22,8 +21,13 @@ def get_jpg(bgr, rect=None):
     return jpg
 
 
-def save_rgb(bgr, path):
+def save_rgb(bgr, path, rect=None):
     rgb = bgr_to_rgb(bgr)
+
+    if not rect is None:
+        l, t, r, b = rect
+        rgb = rgb[t:b, l:r]
+
     PIL.Image.fromarray(rgb.astype('uint8'), 'RGB').save(path)
     print("saved", path)
 

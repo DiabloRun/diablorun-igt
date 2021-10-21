@@ -22,7 +22,7 @@ if sys.platform == "win32":
         def __init__(self, name: str = "Diablo II: Resurrected"):
             self.name = name
 
-        def get_bgr(self) -> np.ndarray:
+        def get_snapshot(self) -> np.ndarray:
             hwnd = win32gui.FindWindow(None, self.name)
 
             # Get window rect
@@ -59,8 +59,14 @@ if sys.platform == "win32":
             mfc_dc.DeleteDC()
             win32gui.ReleaseDC(hwnd, hwnd_dc)
 
+            # Get cursor position
+            cursor = win32gui.ScreenToClient(hwnd, win32gui.GetCursorPos())
+
+            if cursor[0] < 0 or cursor[0] >= width or cursor[1] < 0 or cursor[1] >= height:
+                cursor = None
+
             # Convert to np array
-            return np.frombuffer(bmpstr, dtype=np.uint8).reshape(height, width, 4)[..., :3]
+            return cursor, np.frombuffer(bmpstr, dtype=np.uint8).reshape(height, width, 4)[..., :3]
 
 elif sys.platform == "darwin":
     class WindowCapture:

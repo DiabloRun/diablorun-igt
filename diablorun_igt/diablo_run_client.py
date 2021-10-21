@@ -1,13 +1,11 @@
 import time
-import os
 import urllib
-from PIL import Image
 from queue import Queue
 import base64
-import urllib
+import urllib.request
 
-from diablorun_igt.inventory_detection import get_item_description_rect, get_item_slot_hover, get_item_slot_rects
-from diablorun_igt.utils import bgr_to_rgb, get_jpg
+from diablorun_igt.inventory_detection import get_hovered_item, get_item_description_rect
+from diablorun_igt.utils import get_jpg
 
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
@@ -17,24 +15,78 @@ class DiabloRunClient:
     def __init__(self, api_url="https://api.diablo.run", api_key=None):
         self.running = False
         self.changes = Queue()
-        self.state = {
-            "is_loading": False
-        }
+
+        self.cursor = None
+        self.bgr = None
+        self.prev_bgr = None
+        self.is_loading = False
+        self.hovered_item = None
 
         self.status = "not found"
-        self.previous_item_slot_hover = None
         self.api_url = api_url
         self.api_key = api_key
 
+        self.frames_counted_from = None
+        self.frames = 0
+        self.fps = 0
+
+    def handle_is_loading(self):
+        is_loading = loading_detection.is_loading(self.bgr)
+
+        if is_loading != self.is_loading:
+            self.is_loading = is_loading
+            self.changes.put_nowait(
+                {"event": "is_loading_change", "value": is_loading})
+
+            # if is_loading and self.is_loading_output:
+            #    self.save_rgb(bgr, os.path.join(self.is_loading_output,
+            #                                    str(time.time()) + ".jpg"))
+
+        if is_loading:
+            self.status = "loading"
+
+    def handle_item_hover(self):
+        if self.is_loading or not self.cursor:
+            return
+
+        hovered_item = get_hovered_item(self.bgr, self.cursor)
+
+        if hovered_item:
+            container, slot, item_rect = hovered_item
+            self.status = slot
+
+            if self.hovered_item and container == self.hovered_item[0] and slot == self.hovered_item[1]:
+                return
+
+            description_rect = get_item_description_rect(self.bgr, self.cursor)
+
+            if description_rect is None:
+                hovered_item = None
+            else:
+                # save_rgb(self.prev_bgr, "debug/" + slot + ".jpg", item_rect)
+                # save_rgb(self.bgr, "debug/" + slot +
+                #         "_description.jpg", description_rect)
+
+                if self.api_key:
+                    self.post_item(container, slot, get_jpg(
+                        self.prev_bgr, item_rect), get_jpg(self.bgr, description_rect))
+
+        self.hovered_item = hovered_item
+
     def run(self):
         self.running = True
+        self.frames_counted_from = time.time()
+        self.frames = 0
+
         window_capture = WindowCapture()
 
         while self.running:
+            self.prev_bgr = self.bgr
             time.sleep(0.01)
 
             try:
-                bgr = window_capture.get_bgr()
+                self.cursor, self.bgr = window_capture.get_snapshot()
+                self.status = "playing"
             except WindowNotFound:
                 self.status = "not found"
                 continue
@@ -43,73 +95,31 @@ class DiabloRunClient:
                 continue
 
             # Check loading
-            is_loading = loading_detection.is_loading(bgr)
-
-            if is_loading != self.state["is_loading"]:
-                self.state["is_loading"] = is_loading
-                self.changes.put_nowait(
-                    {"event": "is_loading_change", "value": is_loading})
-
-                # if is_loading and self.is_loading_output:
-                #    self.save_rgb(bgr, os.path.join(self.is_loading_output,
-                #                                    str(time.time()) + ".jpg"))
-
-            if is_loading:
-                self.status = "loading"
-                continue
+            self.handle_is_loading()
 
             # Check item hover
-            item_slot_rects = get_item_slot_rects(bgr)
-            item_slot_hover = get_item_slot_hover(bgr, item_slot_rects)
+            self.handle_item_hover()
 
-            if item_slot_hover and item_slot_hover != self.previous_item_slot_hover:
-                item_rect = item_slot_rects[item_slot_hover]
-                item_description_rect = get_item_description_rect(
-                    bgr, item_rect)
+            # Update FPS
+            self.frames += 1
 
-                if item_description_rect != None:
-                    # self.save_rgb_rect(
-                    #    bgr, item_rect, "debug/" + item_slot_hover + ".jpg")
-                    # self.save_rgb_rect(
-                    #    bgr, item_description_rect, "debug/" + item_slot_hover + "_description.jpg")
-
-                    if self.api_key:
-                        self.post_item(bgr, item_slot_hover,
-                                       item_rect, item_description_rect)
-                else:
-                    item_slot_hover = None
-
-            self.previous_item_slot_hover = item_slot_hover
-
-            if item_slot_hover:
-                self.status = "hover " + item_slot_hover
-                continue
-
-            # Nothing of interest detected
-            self.status = "playing"
-
-    def save_rgb(self, bgr, path):
-        rgb = bgr_to_rgb(bgr)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        Image.fromarray(rgb.astype('uint8'), 'RGB').save(path)
-
-        print("saved", path)
-
-    def save_rgb_rect(self, bgr, rect, path):
-        l, t, r, b = rect
-        self.save_rgb(bgr[t:b, l:r], path)
+            if self.frames == 30:
+                now = time.time()
+                self.fps = round(
+                    self.frames / (now - self.frames_counted_from))
+                self.frames = 0
+                self.frames_counted_from = now
 
     def stop(self):
         self.running = False
 
-    def post_item(self, bgr, slot, item_rect, description_rect):
+    def post_item(self, container, slot, item_jpg, description_jpg):
         try:
-            data = bytes('{ "container": "character", "slot": "' +
+            data = bytes('{ "container": "' + container + '", "slot": "' +
                          slot + '", "item_jpg": "', "ascii")
-            data += base64.b64encode(get_jpg(bgr, item_rect).getbuffer())
+            data += base64.b64encode(item_jpg.getbuffer())
             data += bytes('", "description_jpg": "', "ascii")
-            data += base64.b64encode(get_jpg(bgr,
-                                             description_rect).getbuffer())
+            data += base64.b64encode(description_jpg.getbuffer())
             data += bytes('" }', "ascii")
 
             req = urllib.request.Request(self.api_url + "/d2r/item", data)
@@ -119,5 +129,5 @@ class DiabloRunClient:
 
             print(res.read())
         except Exception as error:
-            print(error.msg)
+            print(error.message)
             pass

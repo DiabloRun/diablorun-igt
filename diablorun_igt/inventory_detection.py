@@ -6,10 +6,6 @@ from .utils import save_gray
 # BGR
 ITEM_SLOT_COLOR = np.array((2, 2, 2))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
-ITEM_DESCRIPTION_MAX_GRAY = 13
-ITEM_DESCRIPTION_PADDING = 5
-ITEM_DESCRIPTION_MIN_WIDTH = 100
-ITEM_DESCRIPTION_MIN_HEIGHT = 30
 
 ITEM_SLOT_RECT_1920_1080 = {
     'head': [1527, 108, 1640, 221],
@@ -27,7 +23,7 @@ ITEM_SLOT_RECT_1920_1080 = {
 ITEM_SLOT_RECT_1366_768 = {
     'head': [1086, 77, 1166, 157],
     'primary_left': [932, 99, 1012, 257],
-    'primary_right': [1242, 99, 1322, 220],
+    'primary_right': [1242, 99, 1322, 257],
     'body_armor': [1086, 177, 1166, 298],
     'gloves': [932, 278, 1012, 358],
     'belt': [1087, 318, 1167, 358],
@@ -45,6 +41,17 @@ def get_item_slot_rects(bgr):
         return ITEM_SLOT_RECT_1366_768
 
 
+def get_hovered_item(bgr, cursor):
+    rects = get_item_slot_rects(bgr)
+
+    for slot in rects:
+        l, t, r, b = rects[slot]
+
+        if cursor[0] >= l and cursor[0] <= r and cursor[1] >= t and cursor[1] <= b:
+            return "character", slot, rects[slot]
+
+
+"""
 def get_item_slot_hover(bgr, rects):
     if rects is None:
         return None
@@ -71,69 +78,50 @@ def get_item_slot_hover(bgr, rects):
             #print("hover", slot, slot_corner_colors)
 
     # print(n)
+"""
 
 
 def get_item_description_bg_mask(bgr):
     return np.all(np.abs(bgr - ITEM_SLOT_COLOR) < 3, axis=2)
 
 
-def get_item_description_mask(bgr, axis):
-    opposite_axis = 1 - axis
+def get_item_description_rect(bgr, cursor):
+    # 1. Get band around cursor
+    band_left, band_right = cursor[0] - 25, cursor[0] + 25
 
-    # Get item description dark background mask
-    #mask = bgr_to_gray(bgr) <= ITEM_DESCRIPTION_MAX_GRAY
-    mask = np.all(np.abs(bgr - ITEM_SLOT_COLOR) < 3, axis=2)
+    # 2. Get item description bg mask in bad
+    vertical_mask = get_item_description_bg_mask(
+        bgr[:, band_left:band_right])
 
-    # Find horizontal lines where background is fully detected
-    mask = mask.sum(axis=opposite_axis) > mask.shape[opposite_axis] * .9
+    # 3. Get filled lines within band
+    vertical_filled_mask = vertical_mask.sum(
+        axis=1) > vertical_mask.shape[1] * .95
+    filled_y_values = vertical_filled_mask.nonzero()[0]
 
-    # Find padding-sized blocks of adjacent horizontal lines
-    mask = np.convolve(mask, np.ones(ITEM_DESCRIPTION_PADDING), "valid")
-    mask = mask == ITEM_DESCRIPTION_PADDING
-
-    return mask
-
-
-def get_item_description_edges(bgr, axis):
-    mask = get_item_description_mask(bgr, axis)
-
-    # the edges are the first and last instances of padding that were found
-    return mask.argmax(), bgr.shape[axis] - np.flip(mask).argmax()
-
-
-def get_item_description_rect(bgr, item_rect):
-    item_left, _item_top, item_right, _item_bottom = item_rect
-    center = (item_left + item_right) // 2
-
-    top, bottom = get_item_description_edges(
-        bgr[:,
-            min(item_left, center - 25):
-            max(item_right, center + 25)
-            ], 0)
-
-    #left, right = center - 250, center + 250
-
-    mask = np.all(np.abs(bgr[top:bottom, :] - ITEM_SLOT_COLOR) < 3, axis=2)
-    mask = np.all(np.abs(bgr[:,
-                             min(item_left, center - 25):
-                             max(item_right, center + 25)
-                             ] - ITEM_SLOT_COLOR) < 3, axis=2)
-    print(mask.shape)
-    #mask = np.all(np.abs(bgr - ITEM_SLOT_COLOR) < 3, axis=2)
-    opposite_axis = 1
-    mask = mask.sum(axis=opposite_axis) > mask.shape[opposite_axis] * .9
-    print(mask.shape)
-
-    # mask = np.convolve(mask, np.ones(ITEM_DESCRIPTION_PADDING),
-    #                   "valid") == ITEM_DESCRIPTION_PADDING
-
-    #save_gray(mask * 255, "debug/gray.jpg")
-    save_gray(np.tile(mask, (100, 1)) * 255, "debug/gray.jpg")
-
-    if top == 0 or bottom == bgr.shape[0] - 1 or (bottom - top) < ITEM_DESCRIPTION_MIN_HEIGHT:
+    if len(filled_y_values) < 10:
         return None
 
-    vcenter = (top + bottom) // 2
-    left, right = get_item_description_edges(bgr[top:bottom, :], 1)
+    # 4. Get item description bg mask on horizontal lines with filled bands
+    horizontal_mask = get_item_description_bg_mask(
+        bgr[vertical_filled_mask, :])
 
+    # 5. Find places where non-bg and bg pixels are adjacent
+    bg_edges = np.zeros_like(horizontal_mask)
+    bg_edges[:, 1:] = np.bitwise_xor(
+        horizontal_mask[:, :-1], horizontal_mask[:, 1:])
+
+    # 6. Sum number of edges found on vertical lines
+    bg_edges_sums = bg_edges.sum(axis=0)
+    left = cursor[0] - np.flip(bg_edges_sums[:cursor[0]]).argmax()
+    right = cursor[0] + bg_edges_sums[cursor[0]:].argmax()
+
+    # 7. Find top and bottom
+    horizontal_lines_with_edges = np.bitwise_and(horizontal_mask[:, left + 1],
+                                                 horizontal_mask[:, right - 1])
+
+    top = filled_y_values[horizontal_lines_with_edges.argmax()]
+    bottom = filled_y_values[len(filled_y_values) -
+                             np.flip(horizontal_lines_with_edges).argmax() - 1]
+
+    # 8. Done
     return left, top, right, bottom

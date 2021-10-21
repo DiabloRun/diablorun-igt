@@ -10,11 +10,6 @@ from diablorun_igt.gui import GUI
 config = configparser.ConfigParser()
 config.read("diablorun.ini")
 
-#is_loading_output = config.get("debug", "is_loading_output", fallback=None)
-
-# if is_loading_output:
-#    os.makedirs(is_loading_output, exist_ok=True)
-
 # Start LiveSplit client thread
 ls_client = LiveSplitClient()
 ls_client_thread = threading.Thread(target=ls_client.run)

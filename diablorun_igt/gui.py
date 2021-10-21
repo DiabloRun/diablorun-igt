@@ -43,7 +43,8 @@ class GUI:
                 break
 
         # Update gui elements
-        self.d2r_window_status.set(self.dr_client.status)
+        self.d2r_window_status.set(
+            self.dr_client.status + " - " + str(self.dr_client.fps))
 
         self.ls_client_status.set(
             self.ls_client.connected and "connected" or "not connected")
