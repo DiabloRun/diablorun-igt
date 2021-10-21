@@ -2,6 +2,7 @@ import numpy as np
 
 
 # BGR
+ITEM_DESCRIPTION_BG_COLOR = np.array((2, 2, 2))
 ITEM_SLOT_COLOR = np.array((2, 2, 2))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
 EMPTY_SLOT_COLOR = np.array((20, 20, 20))
@@ -121,7 +122,7 @@ def get_empty_item_slots(bgr):
 
 
 def get_item_description_bg_mask(bgr):
-    return np.all(np.abs(bgr - ITEM_SLOT_COLOR) < 3, axis=2)
+    return np.all(np.abs(bgr - ITEM_DESCRIPTION_BG_COLOR) < 8, axis=2)
 
 
 def get_item_description_rect(bgr, cursor):

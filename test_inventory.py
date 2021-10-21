@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
         bgr = get_bgr(image_path)
 
-        write_docs = image_name == "nothing_1575_800"
+        write_docs = image_name == "greathelm_1568_153"  # "head_1799_286"
 
         if write_docs:
             bgr_docs = np.copy(bgr)
@@ -137,6 +137,7 @@ if __name__ == "__main__":
 
         # step 7 docs
         if write_docs:
+            print(horizontal_mask)
             bgr_docs[top-2:top, left:right] = (0, 0, 255)
             bgr_docs[bottom:bottom+2, left:right] = (0, 0, 255)
 
