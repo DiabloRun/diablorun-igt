@@ -125,19 +125,18 @@ if __name__ == "__main__":
                 bgr_docs, "docs/item_description_detection/step6_horizontal_max.jpg")
 
         # 7. Find top and bottom
-        horizontal_lines_with_edges = np.bitwise_and(horizontal_mask[:, left + 1],
-                                                     horizontal_mask[:, right - 1])
+        horizontal_filled_lines = horizontal_mask[:, left:right].sum(
+            axis=1) > (right - left) * .95
 
-        top = filled_y_values[horizontal_lines_with_edges.argmax()]
+        top = filled_y_values[horizontal_filled_lines.argmax()]
         bottom = filled_y_values[len(filled_y_values) -
-                                 np.flip(horizontal_lines_with_edges).argmax() - 1]
+                                 np.flip(horizontal_filled_lines).argmax() - 1]
 
         if bottom - top < 50:
             continue
 
         # step 7 docs
         if write_docs:
-            print(horizontal_mask)
             bgr_docs[top-2:top, left:right] = (0, 0, 255)
             bgr_docs[bottom:bottom+2, left:right] = (0, 0, 255)
 

@@ -163,12 +163,12 @@ def get_item_description_rect(bgr, cursor):
         return None
 
     # 7. Find top and bottom
-    horizontal_lines_with_edges = np.bitwise_and(horizontal_mask[:, left + 1],
-                                                 horizontal_mask[:, right - 1])
+    horizontal_filled_lines = horizontal_mask[:, left:right].sum(
+        axis=1) > (right - left) * .95
 
-    top = filled_y_values[horizontal_lines_with_edges.argmax()]
+    top = filled_y_values[horizontal_filled_lines.argmax()]
     bottom = filled_y_values[len(filled_y_values) -
-                             np.flip(horizontal_lines_with_edges).argmax() - 1]
+                             np.flip(horizontal_filled_lines).argmax() - 1]
 
     if bottom - top < 50:
         return None
