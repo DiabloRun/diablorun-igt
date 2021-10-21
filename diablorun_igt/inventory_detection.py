@@ -153,7 +153,7 @@ def get_item_description_rect(bgr, cursor):
     # 6. Sum number of edges found on vertical lines
     bg_edges_sums = bg_edges.sum(axis=0)
 
-    if bg_edges_sums.max() < 25:
+    if bg_edges_sums.max() < 50:
         return None
 
     left = cursor[0] - np.flip(bg_edges_sums[:cursor[0]]).argmax()
