@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
         bgr = get_bgr(image_path)
 
-        write_docs = image_name == "hover_gloves_1388_441"
+        write_docs = image_name == "nothing_1575_800"
 
         if write_docs:
             bgr_docs = np.copy(bgr)
@@ -109,6 +109,10 @@ if __name__ == "__main__":
 
         # 6. Sum number of edges found on vertical lines
         bg_edges_sums = bg_edges.sum(axis=0)
+
+        if bg_edges_sums.max() < 25:
+            continue
+
         left = cursor_x - np.flip(bg_edges_sums[:cursor_x]).argmax()
         right = cursor_x + bg_edges_sums[cursor_x:].argmax()
 
@@ -127,6 +131,9 @@ if __name__ == "__main__":
         top = filled_y_values[horizontal_lines_with_edges.argmax()]
         bottom = filled_y_values[len(filled_y_values) -
                                  np.flip(horizontal_lines_with_edges).argmax() - 1]
+
+        if bottom - top < 50:
+            continue
 
         # step 7 docs
         if write_docs:

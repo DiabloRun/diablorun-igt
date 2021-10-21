@@ -151,8 +151,15 @@ def get_item_description_rect(bgr, cursor):
 
     # 6. Sum number of edges found on vertical lines
     bg_edges_sums = bg_edges.sum(axis=0)
+
+    if bg_edges_sums.max() < 25:
+        return None
+
     left = cursor[0] - np.flip(bg_edges_sums[:cursor[0]]).argmax()
     right = cursor[0] + bg_edges_sums[cursor[0]:].argmax()
+
+    if right - left < 100:
+        return None
 
     # 7. Find top and bottom
     horizontal_lines_with_edges = np.bitwise_and(horizontal_mask[:, left + 1],
@@ -161,6 +168,9 @@ def get_item_description_rect(bgr, cursor):
     top = filled_y_values[horizontal_lines_with_edges.argmax()]
     bottom = filled_y_values[len(filled_y_values) -
                              np.flip(horizontal_lines_with_edges).argmax() - 1]
+
+    if bottom - top < 50:
+        return None
 
     # 8. Done
     return left, top, right, bottom
