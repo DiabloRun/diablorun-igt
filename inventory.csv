@@ -9,6 +9,12 @@ res_width,res_height,slot,x,y,w,h
 1920,1080,amulet,1663,206,56,56
 1920,1080,ring_left,1447,447,56,56
 1920,1080,ring_right,1663,447,56,56
+
+1920,1080,swap_on_primary_left,1334,131,3,3
+1920,1080,swap_on_primary_right,1770,131,3,3
+1920,1080,swap_on_secondary_left,1396,131,3,3
+1920,1080,swap_on_secondary_right,1832,131,3,3
+
 1366,768,head,1086,77,80,80
 1366,768,primary_left,932,99,80,158
 1366,768,primary_right,1242,99,80,158
@@ -19,3 +25,8 @@ res_width,res_height,slot,x,y,w,h
 1366,768,amulet,1184,146,40,40
 1366,768,ring_left,1029,318,40,40
 1366,768,ring_right,1184,318,40,40
+
+1366,768,swap_on_primary_left,949,92,3,3
+1366,768,swap_on_primary_right,1259,92,3,3
+1366,768,swap_on_secondary_left,993,92,3,3
+1366,768,swap_on_secondary_right,1303,92,3,3

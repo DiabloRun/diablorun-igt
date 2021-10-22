@@ -51,3 +51,7 @@ def get_image_rect(image, rect):
         return image[t:b, l:r]
 
     return image
+
+
+def bgr_in_color_range(bgr, color, dist):
+    return np.all(np.abs(bgr - color) <= dist, axis=2)

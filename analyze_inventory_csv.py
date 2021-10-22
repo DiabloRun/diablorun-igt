@@ -1,10 +1,3 @@
-import os
-import numpy as np
-from PIL import Image
-import glob
-import json
-
-
 if __name__ == "__main__":
     slots = {}
 
@@ -14,6 +7,9 @@ if __name__ == "__main__":
         for line in f:
             if header:
                 header = False
+                continue
+
+            if not line.strip():
                 continue
 
             res_width, res_height, slot, x, y, w, h = line.strip().split(",")
@@ -26,7 +22,7 @@ if __name__ == "__main__":
                 x) + int(w), int(y) + int(h)]
 
     for res in slots:
-        print("ITEM_SLOT_RECT_" + res + " = {")
+        print("RECTS_" + res + " = {")
         for slot in slots[res]:
             l, t, r, b = slots[res][slot]
             print("    '" + slot + "': [" + str(l) + ", " +
