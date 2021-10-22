@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 
 
 # BGR
@@ -126,6 +127,9 @@ def get_item_description_bg_mask(bgr):
 
 
 def get_item_description_rect(bgr, cursor):
+    if cursor is None:
+        return None
+
     # 1. Get band around cursor
     band_left, band_right = cursor[0] - 25, cursor[0] + 25
 
@@ -144,6 +148,10 @@ def get_item_description_rect(bgr, cursor):
     # 4. Get item description bg mask on horizontal lines with filled bands
     horizontal_mask = get_item_description_bg_mask(
         bgr[vertical_filled_mask, :])
+
+    # Remove spots with less than 3px width
+    horizontal_mask[:, :-2] = np.min(sliding_window_view(
+        horizontal_mask, 3, axis=1), axis=2)
 
     # 5. Find places where non-bg and bg pixels are adjacent
     bg_edges = np.zeros_like(horizontal_mask)

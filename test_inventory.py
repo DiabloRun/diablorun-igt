@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from PIL import Image
 import glob
 import configparser
@@ -42,7 +43,7 @@ if __name__ == "__main__":
 
         bgr = get_bgr(image_path)
 
-        write_docs = image_name == "nothing_1700_851"  # "head_1799_286"
+        write_docs = image_name == "key_979_505"  # "head_1799_286"
 
         if write_docs:
             bgr_docs = np.copy(bgr)
@@ -84,6 +85,10 @@ if __name__ == "__main__":
         horizontal_mask = inventory_detection.get_item_description_bg_mask(
             bgr[vertical_filled_mask, :])
 
+        # Remove spots with less than 3px width
+        horizontal_mask[:, :-2] = np.min(sliding_window_view(
+            horizontal_mask, 3, axis=1), axis=2)
+
         # step 4 docs
         if write_docs:
             bgr_docs[vertical_filled_mask, :band_left] = mask_to_bgr(
@@ -98,6 +103,7 @@ if __name__ == "__main__":
         bg_edges = np.zeros_like(horizontal_mask)
         bg_edges[:, 1:] = np.bitwise_xor(
             horizontal_mask[:, :-1], horizontal_mask[:, 1:])
+        #bg_edges = np.diff(horizontal_mask, axis=1, prepend=0)
 
         # step 5 docs
         if write_docs:
@@ -115,6 +121,9 @@ if __name__ == "__main__":
 
         left = cursor_x - np.flip(bg_edges_sums[:cursor_x]).argmax()
         right = cursor_x + bg_edges_sums[cursor_x:].argmax()
+
+        if right - left < 100:
+            continue
 
         # step 6 docs
         if write_docs:
@@ -145,7 +154,7 @@ if __name__ == "__main__":
 
         # 8. Done
         save_rgb(bgr[top:bottom, left:right],
-                 "debug/" + image_name + ".jpg")
+                 "debug/" + image_name + ".png")
 
         if write_docs:
             bgr_docs[top:bottom, left:right] = bgr[top:bottom, left:right]
