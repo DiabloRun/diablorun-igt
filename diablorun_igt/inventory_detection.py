@@ -55,7 +55,10 @@ def get_item_slot_rects(bgr):
         return ITEM_SLOT_RECT_1366_768
 
 
-def get_hovered_item(bgr, cursor):
+def get_hovered_item_slot(bgr, cursor):
+    if cursor is None:
+        return None
+
     rects = get_item_slot_rects(bgr)
 
     if rects is None:
@@ -109,7 +112,7 @@ def get_empty_item_slots(bgr):
     if rects is None:
         return False
 
-    empty_slots = {"character": []}
+    empty_slots = set()
 
     for slot in rects:
         l, t, r, b = rects[slot]
@@ -117,7 +120,7 @@ def get_empty_item_slots(bgr):
         empty_color, empty_color_range = ITEM_SLOT_EMPTY_CENTER[slot]
 
         if (np.abs(bgr[vc, hc] - empty_color) <= empty_color_range).all():
-            empty_slots["character"].append(slot)
+            empty_slots.add(("character", slot))
 
     return empty_slots
 
@@ -161,7 +164,7 @@ def get_item_description_rect(bgr, cursor):
     # 6. Sum number of edges found on vertical lines
     bg_edges_sums = bg_edges.sum(axis=0)
 
-    if bg_edges_sums.max() < 50:
+    if bg_edges_sums.max() < 40:
         return None
 
     left = cursor[0] - np.flip(bg_edges_sums[:cursor[0]]).argmax()

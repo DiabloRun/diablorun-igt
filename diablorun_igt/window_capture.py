@@ -66,7 +66,7 @@ if sys.platform == "win32":
                 cursor = None
 
             # Convert to np array
-            return cursor, np.frombuffer(bmpstr, dtype=np.uint8).reshape(height, width, 4)[..., :3]
+            return np.frombuffer(bmpstr, dtype=np.uint8).reshape(height, width, 4)[..., :3], cursor, win32gui.GetCursorInfo()[0]
 
 elif sys.platform == "darwin":
     class WindowCapture:

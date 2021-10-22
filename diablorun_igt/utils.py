@@ -43,3 +43,11 @@ def save_gray(values, path):
     rgb = PIL.Image.fromarray(values.astype('uint8'), 'L')
     rgb.save(path)
     print("saved", path)
+
+
+def get_image_rect(image, rect):
+    if not rect is None:
+        l, t, r, b = rect
+        return image[t:b, l:r]
+
+    return image

@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
         bgr = get_bgr(image_path)
 
-        write_docs = image_name == "key_979_505"  # "head_1799_286"
+        write_docs = image_name == "heavy_gloves_965_321"  # "head_1799_286"
 
         if write_docs:
             bgr_docs = np.copy(bgr)
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         # 6. Sum number of edges found on vertical lines
         bg_edges_sums = bg_edges.sum(axis=0)
 
-        if bg_edges_sums.max() < 50:
+        if bg_edges_sums.max() < 40:
             continue
 
         left = cursor_x - np.flip(bg_edges_sums[:cursor_x]).argmax()
