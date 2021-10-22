@@ -21,6 +21,12 @@ if __name__ == "__main__":
             slots[res][slot] = [int(x), int(y), int(
                 x) + int(w), int(y) + int(h)]
 
+            if slot == "primary_left":
+                slots[res]["secondary_left"] = slots[res][slot]
+
+            if slot == "primary_right":
+                slots[res]["secondary_right"] = slots[res][slot]
+
     for res in slots:
         print("RECTS_" + res + " = {")
         for slot in slots[res]:

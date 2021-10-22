@@ -2,6 +2,7 @@ import base64
 import urllib.request
 
 from diablorun_igt import inventory_detection
+from diablorun_igt.calibration import get_calibrated_rects
 from diablorun_igt.utils import get_image_rect, get_jpg
 
 
@@ -51,13 +52,16 @@ class InventoryManager:
             # Re-send item images that are out of sync with description
             if len(self.send_images_when_readable) > 0:
                 rects = inventory_detection.get_item_slot_rects(bgr)
+                sent_slots = set()
 
                 for slot in self.send_images_when_readable:
-                    if not slot in emptied_item_slots:
+                    if not slot in emptied_item_slots and slot[1] in rects:
                         self.post_item(slot, get_image_rect(
                             bgr, rects[slot[1]]), None)
+                        sent_slots.add(slot)
 
-                self.send_images_when_readable.clear()
+                for slot in sent_slots:
+                    self.send_images_when_readable.remove(slot)
 
         # Check if an item slot is currently hovered
         item_slot_hover = inventory_detection.get_hovered_item_slot(
