@@ -1,9 +1,8 @@
 import base64
 import urllib.request
 
-from diablorun_igt import inventory_detection
-from diablorun_igt.calibration import get_calibrated_rects
-from diablorun_igt.utils import get_image_rect, get_jpg
+from diablorun_igt import inventory_detection, inventory_calibration
+from .utils import get_image_rect, get_jpg, load_bgr, save_rgb, draw_rect
 
 
 class InventoryManager:
@@ -142,3 +141,11 @@ class InventoryManager:
         except Exception as error:
             print(error)
             pass
+
+    def calibrate(self, bgr):
+        rects = inventory_calibration.get_inventory_rects(bgr)
+
+        for name in rects:
+            draw_rect(bgr, rects[name])
+
+        save_rgb(bgr, "inventory_calibration.jpg")

@@ -3,12 +3,8 @@ import urllib
 from queue import Queue
 import base64
 import urllib.request
-from diablorun_igt import inventory_detection
 
-from diablorun_igt.inventory_detection import get_hovered_item_slot, get_item_description_rect
-from diablorun_igt.inventory_manager import InventoryManager
-from diablorun_igt.utils import get_jpg
-
+from .inventory_manager import InventoryManager
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
 
@@ -23,6 +19,7 @@ class DiabloRunClient:
         self.api_url = api_url
         self.api_key = api_key
 
+        self.bgr = None
         self.frames_counted_from = None
         self.frames = 0
         self.fps = 0
@@ -55,7 +52,7 @@ class DiabloRunClient:
             time.sleep(0.01)
 
             try:
-                bgr, cursor, cursor_visible = window_capture.get_snapshot()
+                self.bgr, cursor, cursor_visible = window_capture.get_snapshot()
                 self.status = "playing"
             except WindowNotFound:
                 self.status = "not found"
@@ -65,12 +62,12 @@ class DiabloRunClient:
                 continue
 
             # Check loading
-            self.handle_is_loading(bgr)
+            self.handle_is_loading(self.bgr)
 
             # Check inventory
             if self.api_key and not self.is_loading:
                 self.inventory_manager.handle_frame(
-                    bgr, cursor, cursor_visible)
+                    self.bgr, cursor, cursor_visible)
 
             # Update FPS
             self.frames += 1
@@ -126,3 +123,7 @@ class DiabloRunClient:
         except Exception as error:
             print(error)
             pass
+
+    def calibrate(self):
+        if self.bgr is not None:
+            self.inventory_manager.calibrate(self.bgr)

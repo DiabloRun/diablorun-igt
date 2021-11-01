@@ -55,3 +55,16 @@ def get_image_rect(image, rect):
 
 def bgr_in_color_range(bgr, color, dist):
     return np.all(np.abs(bgr - color) <= dist, axis=2)
+
+
+def load_bgr(image_path):
+    image = PIL.Image.open(image_path)
+    return np.array(image)[..., :3][:, :, ::-1]
+
+
+def draw_rect(bgr, rect, color=(0, 0, 255)):
+    x0, y0, x1, y1 = rect
+    bgr[y0:y1, x0:x0+1] = color
+    bgr[y0:y1, x1:x1+1] = color
+    bgr[y0:y0+1, x0:x1] = color
+    bgr[y1:y1+1, x0:x1] = color

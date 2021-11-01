@@ -1,6 +1,8 @@
 import sys
 import numpy as np
 
+from diablorun_igt.utils import load_bgr
+
 
 class WindowNotFound(Exception):
     pass
@@ -70,4 +72,7 @@ if sys.platform == "win32":
 
 elif sys.platform == "darwin":
     class WindowCapture:
-        pass
+        def get_snapshot(self):
+            bgr = load_bgr("test_images/empty_inventory/empty.png")
+
+            return bgr, None, True

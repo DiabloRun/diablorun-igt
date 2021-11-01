@@ -24,6 +24,9 @@ class GUI:
         tkinter.Label(self.tk, textvariable=self.ls_client_status).grid(
             row=1, column=1)
 
+        tkinter.Button(self.tk, text="Calibrate",
+                       command=dr_client.calibrate).grid(row=2, column=0)
+
         self.ls_client = ls_client
         self.dr_client = dr_client
 
