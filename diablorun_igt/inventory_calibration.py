@@ -113,5 +113,7 @@ def get_inventory_rects(bgr):
         "primary_right": primary_right_rect,
         "swap_primary": swap_primary_rect,
         "swap_secondary": swap_secondary_rect,
-        "inventory_text": inventory_text_rect
+        "inventory_text": inventory_text_rect,
+        "secondary_left": primary_left_rect,
+        "secondary_right": primary_right_rect
     }

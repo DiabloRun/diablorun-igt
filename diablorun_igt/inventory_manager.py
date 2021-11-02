@@ -1,8 +1,9 @@
 import base64
 import urllib.request
+import numpy as np
 
 from diablorun_igt import inventory_detection, inventory_calibration
-from .utils import get_image_rect, get_jpg, load_bgr, save_rgb, draw_rect
+from .utils import get_image_rect, get_jpg, save_rgb, draw_rect
 
 
 class InventoryManager:
@@ -144,8 +145,11 @@ class InventoryManager:
 
     def calibrate(self, bgr):
         rects = inventory_calibration.get_inventory_rects(bgr)
+        bgr_copy = np.copy(bgr)
 
         for name in rects:
-            draw_rect(bgr, rects[name])
+            draw_rect(bgr_copy, rects[name])
 
-        save_rgb(bgr, "inventory_calibration.jpg")
+        save_rgb(bgr_copy, "inventory_calibration.jpg")
+
+        return rects

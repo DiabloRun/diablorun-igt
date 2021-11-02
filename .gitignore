@@ -141,6 +141,7 @@ cython_debug/
 .DS_Store
 /start_loading_images
 diablorun.ini
+diablorun.pickle
 /debug
 /screenshots
 inventory_calibration.jpg

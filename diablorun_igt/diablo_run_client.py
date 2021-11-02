@@ -3,6 +3,7 @@ import urllib
 from queue import Queue
 import base64
 import urllib.request
+import pickle
 
 from .inventory_manager import InventoryManager
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
@@ -20,6 +21,8 @@ class DiabloRunClient:
         self.api_key = api_key
 
         self.bgr = None
+        self.cursor = None
+        self.cursor_visible = False
         self.frames_counted_from = None
         self.frames = 0
         self.fps = 0
@@ -52,7 +55,7 @@ class DiabloRunClient:
             time.sleep(0.01)
 
             try:
-                self.bgr, cursor, cursor_visible = window_capture.get_snapshot()
+                self.bgr, self.cursor, self.cursor_visible = window_capture.get_snapshot()
                 self.status = "playing"
             except WindowNotFound:
                 self.status = "not found"
@@ -67,7 +70,7 @@ class DiabloRunClient:
             # Check inventory
             if self.api_key and not self.is_loading:
                 self.inventory_manager.handle_frame(
-                    self.bgr, cursor, cursor_visible)
+                    self.bgr, self.cursor, self.cursor_visible)
 
             # Update FPS
             self.frames += 1
@@ -125,5 +128,10 @@ class DiabloRunClient:
             pass
 
     def calibrate(self):
+        calibration = {}
+
         if self.bgr is not None:
-            self.inventory_manager.calibrate(self.bgr)
+            calibration = self.inventory_manager.calibrate(self.bgr)
+
+        with open("diablorun.pickle", "wb") as f:
+            f.write(pickle.dumps(calibration))
