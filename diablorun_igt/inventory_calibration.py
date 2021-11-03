@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
+from diablorun_igt.utils import get_image_rect
+
 
 def get_bottom_borders(bgr, rect, cell_index, count):
     x0, y0, x1, y1 = rect
@@ -94,26 +96,55 @@ def get_inventory_rects(bgr):
     # 5c. Get inventory text
     vertical_gap = body_armor_rect[1] - head_rect[3]
     inventory_text_rect = (
-        head_rect[0] - vertical_gap, head_rect[1] -
-        int(vertical_gap * 2.5),
-        head_rect[2] + vertical_gap, head_rect[1] - int(vertical_gap * 1.5)
+        head_rect[0] - vertical_gap,
+        #head_rect[1] - int(vertical_gap * 2.5),
+        head_rect[1] - vertical_gap * 2 - 1,
+        head_rect[2] + vertical_gap,
+        head_rect[1] - vertical_gap * 2 + 1
+        #head_rect[1] - int(vertical_gap * 1.5)
     )
 
-    return {
-        "inventory": rect,
-        "gloves": gloves_rect,
-        "primary_left": primary_left_rect,
-        "ring_left": ring_left_rect,
-        "belt": belt_rect,
-        "body_armor": body_armor_rect,
-        "head": head_rect,
-        "ring_right": ring_right_rect,
-        "amulet": amulet_rect,
-        "boots": boots_rect,
-        "primary_right": primary_right_rect,
-        "swap_primary": swap_primary_rect,
-        "swap_secondary": swap_secondary_rect,
-        "inventory_text": inventory_text_rect,
-        "secondary_left": primary_left_rect,
-        "secondary_right": primary_right_rect
+    calibration = {
+        "shape": bgr.shape,
+
+        "inventory_rect": rect,
+        "inventory_text_rect": inventory_text_rect,
+
+        "item_slot_rects": {
+            "gloves": gloves_rect,
+            "primary_left": primary_left_rect,
+            "ring_left": ring_left_rect,
+            "belt": belt_rect,
+            "body_armor": body_armor_rect,
+            "head": head_rect,
+            "ring_right": ring_right_rect,
+            "amulet": amulet_rect,
+            "boots": boots_rect,
+            "primary_right": primary_right_rect,
+            "secondary_left": primary_left_rect,
+            "secondary_right": primary_right_rect
+        },
+
+        "swap_primary_rect": swap_primary_rect,
+        "swap_primary_bgr": get_image_rect(bgr, swap_primary_rect),
+        "swap_secondary_rect": swap_secondary_rect,
+        "swap_secondary_bgr": get_image_rect(bgr, swap_primary_rect)
     }
+
+    # Get comparison BGRs and empty item slot rects
+    calibration["inventory_text_bgr"] = get_image_rect(
+        bgr, inventory_text_rect)
+
+    calibration["empty_item_slot_rects"] = {}
+    calibration["empty_item_slot_bgr"] = {}
+
+    for slot in calibration["item_slot_rects"]:
+        x0, y0, x1, y1 = calibration["item_slot_rects"][slot]
+        cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
+
+        calibration["empty_item_slot_rects"][slot] = (
+            cx - 5, cy - 5, cx + 5, cy + 5)
+        calibration["empty_item_slot_bgr"][slot] = get_image_rect(
+            bgr, calibration["empty_item_slot_rects"][slot])
+
+    return calibration

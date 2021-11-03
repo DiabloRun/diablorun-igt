@@ -27,7 +27,14 @@ class DiabloRunClient:
         self.frames = 0
         self.fps = 0
 
-        self.inventory_manager = InventoryManager(api_url, api_key)
+        try:
+            with open("diablorun.pickle", "rb") as f:
+                calibration = pickle.loads(f.read())
+        except FileNotFoundError:
+            calibration = None
+
+        self.inventory_manager = InventoryManager(
+            api_url, api_key, calibration)
 
     def handle_is_loading(self, bgr):
         is_loading = loading_detection.is_loading(bgr)
@@ -128,10 +135,6 @@ class DiabloRunClient:
             pass
 
     def calibrate(self):
-        calibration = {}
-
-        if self.bgr is not None:
-            calibration = self.inventory_manager.calibrate(self.bgr)
-
-        with open("diablorun.pickle", "wb") as f:
-            f.write(pickle.dumps(calibration))
+        if self.bgr is not None and self.inventory_manager.calibrate(self.bgr):
+            with open("diablorun.pickle", "wb") as f:
+                f.write(pickle.dumps(self.inventory_manager.calibration))

@@ -7,9 +7,12 @@ from .utils import get_image_rect, get_jpg, save_rgb, draw_rect
 
 
 class InventoryManager:
-    def __init__(self, api_url, api_key):
+    def __init__(self, api_url, api_key, calibration=None):
         self.api_url = api_url
         self.api_key = api_key
+
+        self.calibrated = None
+        self.calibration = calibration
 
         self.last_description_bgr = None
         self.last_description_rect = None
@@ -22,6 +25,15 @@ class InventoryManager:
         #self.no_description_rect_frames = 0
 
     def handle_frame(self, bgr, cursor, cursor_visible):
+        # Check calibration
+        try:
+            self.calibrated = bgr.shape == self.calibration["shape"]
+        except KeyError:
+            self.calibrated = False
+
+        if not self.calibrated:
+            return
+
         # Check if there is an item description box on the screen
         description_rect = inventory_detection.get_item_description_rect(
             bgr, cursor)
@@ -34,14 +46,15 @@ class InventoryManager:
         #    self.no_description_rect_frames += 1
 
         # Check if item images are readable from current frame
-        item_images_readable = cursor_visible and description_rect is None and inventory_detection.is_inventory_open(
-            bgr)
+        item_images_readable = cursor_visible and description_rect is None and \
+            inventory_detection.is_inventory_open(self.calibration, bgr)
 
         if item_images_readable:
             self.last_readable_bgr = bgr
 
             # Check for emptied item slots
-            empty_slots = inventory_detection.get_empty_item_slots(bgr)
+            empty_slots = inventory_detection.get_empty_item_slots(
+                self.calibration, bgr)
             emptied_item_slots = empty_slots - self.prev_empty_slots
 
             if len(emptied_item_slots) > 0:
@@ -51,7 +64,8 @@ class InventoryManager:
 
             # Re-send item images that are out of sync with description
             if len(self.send_images_when_readable) > 0:
-                rects = inventory_detection.get_item_slot_rects(bgr)
+                rects = inventory_detection.get_item_slot_rects(
+                    self.calibration, bgr)
                 sent_slots = set()
 
                 for slot in self.send_images_when_readable:
@@ -144,12 +158,27 @@ class InventoryManager:
             pass
 
     def calibrate(self, bgr):
-        rects = inventory_calibration.get_inventory_rects(bgr)
+        self.calibration = inventory_calibration.get_inventory_rects(bgr)
+
         bgr_copy = np.copy(bgr)
 
-        for name in rects:
-            draw_rect(bgr_copy, rects[name])
+        # First detected rects
+        for key in ("inventory_rect",):
+            draw_rect(bgr_copy, self.calibration[key], (0, 0, 255))
+
+        # Secondary detected rects
+        for slot in self.calibration["item_slot_rects"]:
+            draw_rect(
+                bgr_copy, self.calibration["item_slot_rects"][slot], (0, 255, 0))
+
+        # Tertiary detected rects
+        for key in ("inventory_text_rect", "swap_primary_rect", "swap_secondary_rect"):
+            draw_rect(bgr_copy, self.calibration[key], (255, 0, 0))
+
+        for slot in self.calibration["empty_item_slot_rects"]:
+            draw_rect(
+                bgr_copy, self.calibration["empty_item_slot_rects"][slot], (255, 0, 0))
 
         save_rgb(bgr_copy, "inventory_calibration.jpg")
 
-        return rects
+        return True

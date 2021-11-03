@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.core.numeric import empty_like
 from numpy.lib.stride_tricks import sliding_window_view
 from diablorun_igt.calibration import get_calibrated_rects
 
@@ -10,6 +11,9 @@ ITEM_DESCRIPTION_BG_COLOR = np.array((2, 2, 2))
 ITEM_SLOT_COLOR = np.array((2, 2, 2))
 ITEM_HOVER_COLOR = np.array((10, 30, 6))
 EMPTY_SLOT_COLOR = np.array((20, 20, 20))
+
+ITEM_SLOTS = ('head', 'primary_left', 'primary_right', 'secondary_left', 'secondary_right',
+              'body_armor', 'gloves', 'belt', 'boots', 'amulet', 'ring_left', 'ring_right')
 
 ITEM_SLOT_EMPTY_CENTER = {
     'head': ((26, 26, 25), 2),
@@ -27,9 +31,20 @@ ITEM_SLOT_EMPTY_CENTER = {
 }
 
 
-def get_item_slot_rects(bgr):
-    rects = get_calibrated_rects(bgr)
+def get_item_slot_rects(calibration, bgr):
+    swap = get_swap(calibration, bgr)
+    rects = calibration["item_slot_rects"].copy()
 
+    if swap == "secondary":
+        del rects["primary_left"]
+        del rects["primary_right"]
+    else:
+        del rects["secondary_left"]
+        del rects["secondary_right"]
+
+    return rects
+
+    """
     if rects:
         rects = rects.copy()
 
@@ -49,6 +64,7 @@ def get_item_slot_rects(bgr):
         del rects["swap_on_primary_right"]
         del rects["swap_on_secondary_left"]
         del rects["swap_on_secondary_right"]
+    """
 
     return rects
 
@@ -82,7 +98,9 @@ def is_item_rect_highlighted(bgr, item_rect):
     return np.sum(np.all(np.abs(slot_corner_colors - ITEM_HOVER_COLOR) < 10, axis=1)) > 1
 
 
-def is_inventory_open(bgr):
+def is_inventory_open(calibration, bgr):
+    return (get_image_rect(bgr, calibration["inventory_text_rect"]) == calibration["inventory_text_bgr"]).all()
+    """
     rects = get_item_slot_rects(bgr)
 
     if rects is None:
@@ -102,9 +120,32 @@ def is_inventory_open(bgr):
             return False
 
     return True
+    """
 
 
-def get_empty_item_slots(bgr):
+def get_swap(calibration, bgr):
+    primary_brightness = get_image_rect(
+        bgr, calibration['swap_primary_rect']).mean()
+    secondary_brightness = get_image_rect(
+        bgr, calibration['swap_secondary_rect']).mean()
+
+    if primary_brightness > secondary_brightness:
+        return "primary"
+
+    return "secondary"
+
+
+def get_empty_item_slots(calibration, bgr):
+    rects = get_item_slot_rects(calibration, bgr)
+    empty_slots = set()
+
+    for slot in rects:
+        if (get_image_rect(bgr, calibration["empty_item_slot_rects"][slot]) == calibration["empty_item_slot_bgr"][slot]).all():
+            empty_slots.add(("character", slot))
+
+    return empty_slots
+
+    """
     rects = get_item_slot_rects(bgr)
 
     if rects is None:
@@ -121,6 +162,7 @@ def get_empty_item_slots(bgr):
             empty_slots.add(("character", slot))
 
     return empty_slots
+    """
 
 
 def get_item_description_bg_mask(bgr):
