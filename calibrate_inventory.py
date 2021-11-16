@@ -7,7 +7,7 @@ from numpy.lib.npyio import save
 from numpy.lib.stride_tricks import sliding_window_view
 
 from diablorun_igt.diablo_run_client import DiabloRunClient
-from diablorun_igt.utils import bgr_in_color_range, bgr_to_gray, bgr_to_rgb, get_image_rect, get_jpg, resize_image, save_gray, save_rgb
+from diablorun_igt.utils import bgr_in_color_range, bgr_to_gray, bgr_to_hsl, bgr_to_rgb, get_image_rect, get_jpg, resize_image, save_gray, save_bgr, save_rgb
 from diablorun_igt import inventory_detection
 
 
@@ -65,8 +65,8 @@ def get_item_rect(bottom_border, height_multiplier):
 
 
 if __name__ == "__main__":
-    for image_path in glob.glob("test_images/empty_inventory/*.png"):
-        # for image_path in glob.glob("test_images/inventory/test.png"):
+    for image_path in glob.glob("test_images/empty_inventory/empty_shenk.png"):
+    #for image_path in glob.glob("test_images/inventory/test.png"):
         image_name = os.path.basename(image_path).split(".")[0]
 
         bgr = get_bgr(image_path)
@@ -80,20 +80,22 @@ if __name__ == "__main__":
         values[:, :values.shape[1]//2] = 0
         save_gray(values * 255, "docs/inventory_calibration/step1.jpg")
 
-        values = np.min(sliding_window_view(values, 25, axis=1), axis=2)
-        values = np.min(sliding_window_view(values, 25, axis=0), axis=2)
+        box_size = 25 * height // 1080
+        print(box_size)
+        values = np.min(sliding_window_view(values, box_size, axis=1), axis=2)
+        values = np.min(sliding_window_view(values, box_size, axis=0), axis=2)
         save_gray(values * 255, "docs/inventory_calibration/step2.jpg")
 
         # 3. Get inventory grid rect
         x0 = np.argmax(values.max(axis=0)) - 1
         y0 = np.argmax(values.max(axis=1)) - 1
-        x1 = values.shape[1] - np.argmax(np.flip(values.max(axis=0))) + 25 - 1
-        y1 = values.shape[0] - np.argmax(np.flip(values.max(axis=1))) + 25 - 1
+        x1 = values.shape[1] - np.argmax(np.flip(values.max(axis=0))) + box_size - 1
+        y1 = values.shape[0] - np.argmax(np.flip(values.max(axis=1))) + box_size - 1
 
         rect = np.array((x0, y0, x1, y1))
 
         draw_rect(bgr, (x0, y0, x1, y1))
-        save_rgb(bgr, "docs/inventory_calibration/step3.jpg")
+        save_bgr(bgr, "docs/inventory_calibration/step3.jpg")
 
         # 4. Get wielded item bottom borders
         gloves_col = get_bottom_borders(bgr, rect, 1, 2)
@@ -101,7 +103,7 @@ if __name__ == "__main__":
         belt_col = get_bottom_borders(bgr, rect, 5, 3)
         ring_right_col = get_bottom_borders(bgr, rect, 7, 2)
         boots_col = get_bottom_borders(bgr, rect, 9, 2)
-        save_rgb(bgr, "docs/inventory_calibration/step4.jpg")
+        save_bgr(bgr, "docs/inventory_calibration/step4.jpg")
 
         # 5a. Get wielded item boxes
         gloves_rect = get_item_rect(gloves_col[0], 1)
@@ -153,10 +155,15 @@ if __name__ == "__main__":
         )
 
         draw_rect(bgr, inventory_text_rect)
-        inventory_text_b = get_image_rect(bgr, inventory_text_rect)[:, :, 0]
-        # print(inventory_text_b.shape)
-        # print(json.dumps(inventory_text_b.tolist()))
 
-        # mask = bgr_in_color_range(bgr, (140, 180, 180), 30)
+        inventory_text_bgr = get_image_rect(bgr, inventory_text_rect)
+        inventory_text_hsl = bgr_to_hsl(inventory_text_bgr)
 
-        save_rgb(bgr, "docs/inventory_calibration/step5.jpg")
+        hue_mask = inventory_text_hsl[:,:,0] == 32
+        saturation = np.argmax(np.bincount(inventory_text_hsl[hue_mask,1]))
+        lighting = np.argmax(np.bincount(inventory_text_hsl[hue_mask,2]))
+
+        print(saturation, lighting)
+        #save_rgb(inventory_text_hsl, "debug/test.png")
+
+        save_bgr(bgr, "docs/inventory_calibration/step5.jpg")

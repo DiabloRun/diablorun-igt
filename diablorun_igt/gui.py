@@ -6,7 +6,7 @@ from .diablo_run_client import DiabloRunClient
 
 
 class GUI:
-    def __init__(self, ls_client: LiveSplitClient, dr_client: DiabloRunClient):
+    def __init__(self, ls_client: LiveSplitClient = None, dr_client: DiabloRunClient = None):
         self.tk = tkinter.Tk()
         self.tk.title("Diablo.run IGT")
 
@@ -37,7 +37,7 @@ class GUI:
                 change = self.dr_client.changes.get_nowait()
                 print(change)
 
-                if change["event"] == "is_loading_change":
+                if self.ls_client is not None and change["event"] == "is_loading_change":
                     if change["value"]:
                         self.ls_client.pause()
                     else:
@@ -49,8 +49,11 @@ class GUI:
         self.d2r_window_status.set(
             self.dr_client.status + " - " + str(self.dr_client.fps))
 
-        self.ls_client_status.set(
-            self.ls_client.connected and "connected" or "not connected")
+        if self.ls_client is None:
+            self.ls_client_status.set("disabled")
+        else:
+            self.ls_client_status.set(
+                self.ls_client.connected and "connected" or "not connected")
 
         self.tk.after(1000//60, self.update)
 

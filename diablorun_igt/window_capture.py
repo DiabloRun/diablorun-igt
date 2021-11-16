@@ -20,6 +20,10 @@ if sys.platform == "win32":
 
     windll.user32.SetProcessDPIAware()
 
+    CAPTUREBLT = 0x40000000
+    DIB_RGB_COLORS = 0
+    SRCCOPY = 0x00CC0020
+
     class WindowCapture:
         def __init__(self, name: str = "Diablo II: Resurrected"):
             self.name = name
@@ -47,25 +51,25 @@ if sys.platform == "win32":
             bit_map.CreateCompatibleBitmap(mfc_dc, width, height)
             save_dc.SelectObject(bit_map)
 
+            # Get cursor position
+            cursor = win32gui.ScreenToClient(hwnd, win32gui.GetCursorPos())
+
+            if cursor[0] < 0 or cursor[0] >= width or cursor[1] < 0 or cursor[1] >= height:
+                cursor = None
+            
             # Get screenshot
             result = windll.user32.PrintWindow(hwnd, save_dc.GetSafeHdc(), 3)
 
             if result != 1:
                 raise WindowCaptureFailed()
 
-            # bmpinfo = bit_map.GetInfo()
             bmpstr = bit_map.GetBitmapBits(True)
 
+            # Release objects
             win32gui.DeleteObject(bit_map.GetHandle())
             save_dc.DeleteDC()
             mfc_dc.DeleteDC()
             win32gui.ReleaseDC(hwnd, hwnd_dc)
-
-            # Get cursor position
-            cursor = win32gui.ScreenToClient(hwnd, win32gui.GetCursorPos())
-
-            if cursor[0] < 0 or cursor[0] >= width or cursor[1] < 0 or cursor[1] >= height:
-                cursor = None
 
             # Convert to np array
             return np.frombuffer(bmpstr, dtype=np.uint8).reshape(height, width, 4)[..., :3], cursor, win32gui.GetCursorInfo()[0]

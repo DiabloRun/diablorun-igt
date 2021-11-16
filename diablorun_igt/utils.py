@@ -1,6 +1,8 @@
 import numpy as np
 import PIL.Image
 import io
+import base64
+import cv2
 
 
 def resize_image(bgr, size):
@@ -28,9 +30,18 @@ def get_jpg(bgr, rect=None):
     return jpg
 
 
-def save_rgb(bgr, path, rect=None):
-    rgb = bgr_to_rgb(bgr)
+def get_jpg_b64_buffer(bgr, max_height=None):
+    if max_height and bgr.shape[0] > max_height:
+        bgr = cv2.resize(bgr, (bgr.shape[1]*max_height//bgr.shape[0], max_height))
+    
+    return base64.b64encode(get_jpg(bgr).getbuffer())
 
+
+def save_bgr(bgr, path, rect=None):
+    save_rgb(bgr_to_rgb(bgr), path, rect)
+
+
+def save_rgb(rgb, path, rect=None):
     if not rect is None:
         l, t, r, b = rect
         rgb = rgb[t:b, l:r]
@@ -68,3 +79,60 @@ def draw_rect(bgr, rect, color=(0, 0, 255)):
     bgr[y0:y1, x1:x1+1] = color
     bgr[y0:y0+1, x0:x1] = color
     bgr[y1:y1+1, x0:x1] = color
+
+
+def bgr_to_hs(img): # (h: 0-255, s: 0-100)
+    maxc = img.max(-1)
+    minc = img.min(-1)
+
+    out = np.zeros((img.shape[0], img.shape[1], 2), np.uint8)
+    #out = np.zeros(img.shape)
+    #out[:,:,2] = maxc
+    out[:,:,1] = (maxc-minc) / maxc * 100
+
+    divs = (maxc[...,None] - img)/ ((maxc-minc)[...,None])
+    cond1 = divs[...,0] - divs[...,1]
+    cond2 = 2.0 + divs[...,2] - divs[...,0]
+    h = 4.0 + divs[...,1] - divs[...,2]
+    h[img[...,2]==maxc] = cond1[img[...,2]==maxc]
+    h[img[...,1]==maxc] = cond2[img[...,1]==maxc]
+    out[:,:,0] = ((h/6.0) % 1.0) * 255
+
+    #out[minc == maxc,:2] = 0
+    #print(out)
+    return out
+
+
+def bgr_to_hsl(bgr): # (h: 0-255, s: 0-100)
+    maxc = bgr.max(-1)
+    minc = bgr.min(-1)
+
+
+    divs = (maxc[...,None] - bgr)/ ((maxc-minc)[...,None])
+    cond1 = divs[...,0] - divs[...,1]
+    cond2 = 2.0 + divs[...,2] - divs[...,0]
+    h = 4.0 + divs[...,1] - divs[...,2]
+    h[bgr[...,2]==maxc] = cond1[bgr[...,2]==maxc]
+    h[bgr[...,1]==maxc] = cond2[bgr[...,1]==maxc]
+
+    out = np.zeros(bgr.shape, np.uint8)
+    out[:,:,0] = ((h/6.0) % 1.0) * 255
+    out[:,:,1] = (maxc-minc) / maxc * 255
+    out[:,:,2] = maxc
+    out[minc == maxc,:2] = 0
+    
+    return out
+
+
+def bgr_to_hue(bgr):
+    maxc = bgr.max(-1)
+    minc = bgr.min(-1)
+
+    divs = (maxc[...,None] - bgr)/ ((maxc-minc)[...,None])
+    cond1 = divs[...,0] - divs[...,1]
+    cond2 = 2.0 + divs[...,2] - divs[...,0]
+    h = 4.0 + divs[...,1] - divs[...,2]
+    h[bgr[...,2]==maxc] = cond1[bgr[...,2]==maxc]
+    h[bgr[...,1]==maxc] = cond2[bgr[...,1]==maxc]
+
+    return ((h/6.0) % 1.0) * 255

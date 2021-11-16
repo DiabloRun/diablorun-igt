@@ -1,8 +1,5 @@
 import time
-import urllib
 from queue import Queue
-import base64
-import urllib.request
 import pickle
 
 from .inventory_manager import InventoryManager
@@ -88,51 +85,10 @@ class DiabloRunClient:
                     self.frames / (now - self.frames_counted_from))
                 self.frames = 0
                 self.frames_counted_from = now
+                #print(self.fps)
 
     def stop(self):
         self.running = False
-
-    def post_item(self, container, slot, item_jpg, description_jpg):
-        try:
-            data = bytes('{ "container": "' + container + '", "slot": "' +
-                         slot + '", "item_jpg": "', "ascii")
-            if item_jpg is not None:
-                data += base64.b64encode(item_jpg.getbuffer())
-            data += bytes('", "description_jpg": "', "ascii")
-            if description_jpg is not None:
-                data += base64.b64encode(description_jpg.getbuffer())
-            data += bytes('" }', "ascii")
-
-            req = urllib.request.Request(self.api_url + "/d2r/item", data)
-            req.add_header('Content-Type', 'application/json')
-            req.add_header('Authorization', 'Bearer ' + self.api_key)
-            res = urllib.request.urlopen(req)
-
-            print("item", container, slot, res.read())
-        except Exception as error:
-            print(error)
-            pass
-
-    def post_remove_items(self, removed_items):
-        try:
-            data = bytes('[', "ascii")
-
-            for i, (container, slot) in enumerate(removed_items):
-                if i > 0:
-                    data += bytes(",", "ascii")
-                data += bytes('["' + container + '", "' + slot + '"]', "ascii")
-            data += bytes(']', "ascii")
-
-            req = urllib.request.Request(
-                self.api_url + "/d2r/remove-items", data)
-            req.add_header('Content-Type', 'application/json')
-            req.add_header('Authorization', 'Bearer ' + self.api_key)
-            res = urllib.request.urlopen(req)
-
-            print("remove_items", res.read())
-        except Exception as error:
-            print(error)
-            pass
 
     def calibrate(self):
         if self.bgr is not None and self.inventory_manager.calibrate(self.bgr):

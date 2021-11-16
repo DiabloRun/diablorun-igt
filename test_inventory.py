@@ -10,7 +10,7 @@ import base64
 from urllib import request, parse
 
 from diablorun_igt.diablo_run_client import DiabloRunClient
-from diablorun_igt.utils import bgr_to_rgb, get_jpg, save_rgb
+from diablorun_igt.utils import bgr_to_gray, bgr_to_rgb, get_jpg, save_bgr
 from diablorun_igt import inventory_detection
 
 
@@ -41,9 +41,12 @@ if __name__ == "__main__":
         image_name = os.path.basename(image_path).split(".")[0]
         cursor_x, cursor_y = [int(x) for x in image_name.split("_")[-2:]]
 
-        bgr = get_bgr(image_path)
+        write_docs = image_name == "axe_2704_757" #"nothing_3359_986" #"heavy_gloves_965_321"
 
-        write_docs = image_name == "heavy_gloves_965_321"  # "head_1799_286"
+        if not write_docs:
+            continue
+
+        bgr = get_bgr(image_path)
 
         if write_docs:
             bgr_docs = np.copy(bgr)
@@ -54,19 +57,30 @@ if __name__ == "__main__":
         # step 1 docs
         if write_docs:
             bgr_docs[:, (band_left - 1, band_right)] = (255, 0, 0)
-            save_rgb(
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step1_vertical_band.jpg")
 
         # 2. Get item description bg mask in bad
-        vertical_mask = inventory_detection.get_item_description_bg_mask(
-            bgr[:, band_left:band_right])
+        gray = bgr_to_gray(bgr)
+        gray_std = np.std(gray, 1)
+
+        diff = np.sum(gray[1:, band_left:band_right] - gray[:-1, band_left:band_right], axis=1)
+
+        #vertical_mask = inventory_detection.get_item_description_bg_mask(
+        #    bgr[:, band_left:band_right])
 
         # step 2 docs
         if write_docs:
-            bgr_docs[:, band_left:band_right] = mask_to_bgr(vertical_mask)
-            save_rgb(
+            max_diff = diff.max()
+            for y in range(bgr.shape[0]):
+                if gray_std[y] > 25:
+                    bgr_docs[y, band_left:band_right] = (255, 0, 0)
+                #draw_color_overlay(bgr_docs[:, band_left:band_right], (255, 0, 0))
+
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step2_vertical_bg_mask.jpg")
 
+        continue
         # 3. Get filled lines within band
         vertical_filled_mask = vertical_mask.sum(
             axis=1) > vertical_mask.shape[1] * .95
@@ -78,7 +92,7 @@ if __name__ == "__main__":
                 draw_color_overlay(
                     bgr_docs[y:y+1, band_left:band_right], (255, 0, 0))
 
-            save_rgb(
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step3_filled_lines.jpg")
 
         # 4. Get item description bg mask on horizontal lines with filled bands
@@ -86,8 +100,9 @@ if __name__ == "__main__":
             bgr[vertical_filled_mask, :])
 
         # Remove spots with less than 3px width
-        horizontal_mask[:, :-2] = np.min(sliding_window_view(
-            horizontal_mask, 3, axis=1), axis=2)
+        min_spot_height = 3# * bgr.shape[0] // 1080
+        horizontal_mask[:, :-(min_spot_height - 1)] = np.min(sliding_window_view(
+            horizontal_mask, min_spot_height, axis=1), axis=2)
 
         # step 4 docs
         if write_docs:
@@ -96,7 +111,7 @@ if __name__ == "__main__":
             bgr_docs[vertical_filled_mask, band_right:] = mask_to_bgr(
                 horizontal_mask[:, band_right:])
 
-            save_rgb(
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step4_horizontal_bg_mask.jpg")
 
         # 5. Find places where non-bg and bg pixels are adjacent
@@ -110,7 +125,7 @@ if __name__ == "__main__":
             for i, y in enumerate(filled_y_values):
                 bgr_docs[y, bg_edges[i].nonzero()] = (0, 255, 0)
 
-            save_rgb(
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step5_horizontal_bg_edges.jpg")
 
         # 6. Sum number of edges found on vertical lines
@@ -130,7 +145,7 @@ if __name__ == "__main__":
             bgr_docs[:, left-2:left] = (0, 0, 255)
             bgr_docs[:, right:right+2] = (0, 0, 255)
 
-            save_rgb(
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step6_horizontal_max.jpg")
 
         # 7. Find top and bottom
@@ -149,15 +164,15 @@ if __name__ == "__main__":
             bgr_docs[top-2:top, left:right] = (0, 0, 255)
             bgr_docs[bottom:bottom+2, left:right] = (0, 0, 255)
 
-            save_rgb(
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step7_vertical_edges.jpg")
 
         # 8. Done
-        save_rgb(bgr[top:bottom, left:right],
+        save_bgr(bgr[top:bottom, left:right],
                  "debug/" + image_name + ".png")
 
         if write_docs:
             bgr_docs[top:bottom, left:right] = bgr[top:bottom, left:right]
 
-            save_rgb(
+            save_bgr(
                 bgr_docs, "docs/item_description_detection/step8_done.jpg")
