@@ -31,5 +31,5 @@ Currently only Windows is supported as the win32 API is used to capture the scre
 1. Create a virtualenv - eg `python -m venv .venv`
 2. Install dependencies using `pip install -r requirements.txt`
 3. Run tests using `python test.py`
-4. Run the program using `python main.py`
-5. Build using pyinstaller - eg `pyinstaller --noconsole main.py`
+4. Run the program using `python diablorun.py`
+5. Build using pyinstaller - eg `pyinstaller --noconsole diablorun.py`
