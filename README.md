@@ -20,7 +20,7 @@ This tool tracks Diablo II: Resurrected loading screens and pauses LiveSplit gam
 ### Setting up Diablo.run IGT
 
 1. [Download latest release](https://github.com/DiabloRun/diablorun-igt/releases)
-2. Run diablorun-igt.exe
+2. Run diablorun.exe
 
 Everything is setup! Launch the game, start the timer and see if it pauses correctly during loading screens. Note that you need to click "Start Server" through LiveSplit every time you open it. It doesn't start automatically.
 
@@ -32,4 +32,5 @@ Currently only Windows is supported as the win32 API is used to capture the scre
 2. Install dependencies using `pip install -r requirements.txt`
 3. Run tests using `python test.py`
 4. Run the program using `python diablorun.py`
-5. Build using pyinstaller - eg `pyinstaller --noconsole diablorun.py`
+5. Get OpenCV path from `cv2.__file__`
+6. Build using pyinstaller - eg `pyinstaller --noconsole diablorun.py --paths="CV2_DIRECTORY"`
