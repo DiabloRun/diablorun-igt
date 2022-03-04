@@ -1,15 +1,17 @@
+from json import load
+from tracemalloc import start
 import cv2
 import numpy as np
 from tqdm import tqdm
 from math import floor
-from Levenshtein import distance as levenshtein_distance
-import pytesseract
+#from Levenshtein import distance as levenshtein_distance
+#import pytesseract
 
 
 from diablorun_igt.utils import bgr_to_rgb, get_image_rect
 from diablorun_igt.loading_detection import is_loading
 
-video_path = "videos/360p.mp4"  # input("Enter path to video: ")
+video_path = input("Enter path to video: ")
 window_name = "Diablo.run IGT"
 
 cap = cv2.VideoCapture(video_path)
@@ -143,15 +145,16 @@ if processing:
         if is_loading(rgb):
             frame_loading = True
         elif i > 0 and (get_image_rect(bgr, rect) - get_image_rect(bgr_prev, rect)).mean() < 0.5:
-            text_image = np.uint8(
-                255 * np.any(get_image_rect(bgr, rect) < 100, axis=2))
-            lines = pytesseract.image_to_string(
-                get_image_rect(text_image, rect), "D2R").split("\n")
+            # text_image = np.uint8(
+            #    255 * np.any(get_image_rect(bgr, rect) < 100, axis=2))
+            # lines = pytesseract.image_to_string(
+            #    get_image_rect(text_image, rect), "D2R").split("\n")
 
-            for line in lines:
-                if levenshtein_distance(line, "SAVE AND EXIT GAME") < 10:
-                    frame_loading = True
-                    break
+            # for line in lines:
+            #    if levenshtein_distance(line, "SAVE AND EXIT GAME") < 10:
+            #        frame_loading = True
+            #        break
+            frame_loading = True
 
         bgr_prev = bgr
 
@@ -159,6 +162,11 @@ if processing:
             loading_frames[start_frame+i] = 1
         else:
             loading_frames[start_frame+i] = 0
+
+# Remove noise
+for i in range(start_frame + 1, end_frame):
+    if loading_frames[i] == 1 and loading_frames[i-1] == 0 and loading_frames[i+1] == 0:
+        loading_frames[i] = 0
 
 # Print stats
 fps = cap.get(cv2.CAP_PROP_FPS)
