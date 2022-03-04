@@ -2,7 +2,7 @@ import time
 from queue import Queue
 import pickle
 
-from .inventory_manager import InventoryManager
+#from .inventory_manager import InventoryManager
 from .window_capture import WindowCapture, WindowCaptureFailed, WindowNotFound
 from . import loading_detection
 
@@ -24,14 +24,14 @@ class DiabloRunClient:
         self.frames = 0
         self.fps = 0
 
-        try:
-            with open("diablorun.pickle", "rb") as f:
-                calibration = pickle.loads(f.read())
-        except FileNotFoundError:
-            calibration = None
+        # try:
+        #    with open("diablorun.pickle", "rb") as f:
+        #        calibration = pickle.loads(f.read())
+        # except FileNotFoundError:
+        #    calibration = None
 
-        self.inventory_manager = InventoryManager(
-            api_url, api_key, calibration)
+        # self.inventory_manager = InventoryManager(
+        #    api_url, api_key, calibration)
 
     def handle_is_loading(self, bgr):
         is_loading = loading_detection.is_loading(bgr)
@@ -72,9 +72,9 @@ class DiabloRunClient:
             self.handle_is_loading(self.bgr)
 
             # Check inventory
-            if self.api_key and not self.is_loading:
-                self.inventory_manager.handle_frame(
-                    self.bgr, self.cursor, self.cursor_visible)
+            # if self.api_key and not self.is_loading:
+            #    self.inventory_manager.handle_frame(
+            #        self.bgr, self.cursor, self.cursor_visible)
 
             # Update FPS
             self.frames += 1
@@ -85,7 +85,7 @@ class DiabloRunClient:
                     self.frames / (now - self.frames_counted_from))
                 self.frames = 0
                 self.frames_counted_from = now
-                #print(self.fps)
+                # print(self.fps)
 
     def stop(self):
         self.running = False
