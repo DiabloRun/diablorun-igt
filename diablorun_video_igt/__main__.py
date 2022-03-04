@@ -2,11 +2,14 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 from math import floor
+from Levenshtein import distance as levenshtein_distance
+import pytesseract
+
 
 from diablorun_igt.utils import bgr_to_rgb, get_image_rect
 from diablorun_igt.loading_detection import is_loading
 
-video_path = input("Enter path to video: ")
+video_path = "videos/360p.mp4"  # input("Enter path to video: ")
 window_name = "Diablo.run IGT"
 
 cap = cv2.VideoCapture(video_path)
@@ -14,7 +17,7 @@ cap_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 ret, bgr = cap.read()
 cap_height, cap_width, cap_channels = bgr.shape
 
-rect = [0, 0, cap_height*800//600, cap_height]
+rect = [cap_width - cap_height*800//600, 0, cap_width, cap_height]
 end = False
 paused = True
 processing = False
@@ -111,19 +114,23 @@ while True:
     elif key == ord("o"):
         end_frame = get_frame(cap)
         reset_bar()
-    elif paused and key == 2555904:
+    elif paused and (key == 2555904 or key == 63235):
+        prev_bgr = bgr
         ret, bgr = cap.read()
         cv2.setTrackbarPos("Seek", window_name, get_frame(cap))
-    elif paused and key == 2424832:
+    elif paused and (key == 2424832 or key == 63234):
         cv2.setTrackbarPos("Seek", window_name, max(0, get_frame(cap) - 2))
     elif key == 13:  # enter
         processing = True
         break
+    elif key != -1:
+        print(key)
 
 cv2.destroyAllWindows()
 
 # Process
 loading_frames = np.zeros(cap_frames, np.uint8)
+bgr_prev = None
 
 if processing:
     set_frame(start_frame)
@@ -131,8 +138,24 @@ if processing:
     for i in tqdm(range(end_frame - start_frame)):
         ret, bgr = cap.read()
         rgb = bgr_to_rgb(get_image_rect(bgr, rect))
+        frame_loading = False
 
         if is_loading(rgb):
+            frame_loading = True
+        elif i > 0 and (get_image_rect(bgr, rect) - get_image_rect(bgr_prev, rect)).mean() < 0.5:
+            text_image = np.uint8(
+                255 * np.any(get_image_rect(bgr, rect) < 100, axis=2))
+            lines = pytesseract.image_to_string(
+                get_image_rect(text_image, rect), "D2R").split("\n")
+
+            for line in lines:
+                if levenshtein_distance(line, "SAVE AND EXIT GAME") < 10:
+                    frame_loading = True
+                    break
+
+        bgr_prev = bgr
+
+        if frame_loading:
             loading_frames[start_frame+i] = 1
         else:
             loading_frames[start_frame+i] = 0
