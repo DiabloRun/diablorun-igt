@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 from math import floor
-#from Levenshtein import distance as levenshtein_distance
-#import pytesseract
+from Levenshtein import distance as levenshtein_distance
+import pytesseract
 
 
 from diablorun_igt.utils import bgr_to_rgb, get_image_rect
@@ -46,7 +46,7 @@ def set_frame(pos):
 
     global bgr
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES, pos)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, min(pos, cap_frames - 1))
 
     if paused:
         _, bgr = cap.read()
@@ -76,16 +76,17 @@ end_frame = cap_frames - 1
 def reset_bar():
     global bar
     bar = np.zeros((50, cap_width, 3), np.uint8)
-    bar[:, floor(cap_width*start_frame//cap_frames)        :floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
+    bar[:, floor(cap_width*start_frame//cap_frames):floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
 
 
 reset_bar()
 
 while True:
     if not paused:
-        ret, bgr = cap.read()
+        ret, next_bgr = cap.read()
 
         if ret:
+            bgr = next_bgr
             pos = get_frame(cap)
             cv2.setTrackbarPos("Seek", window_name, pos)
 
@@ -130,7 +131,7 @@ cv2.destroyAllWindows()
 
 # Process
 loading_frames = np.zeros(cap_frames, np.uint8)
-bgr_prev = None
+rgb_prev = None
 
 if processing:
     set_frame(start_frame)
@@ -142,19 +143,18 @@ if processing:
 
         if is_loading(rgb):
             frame_loading = True
-        elif i > 0 and (get_image_rect(bgr, rect) - get_image_rect(bgr_prev, rect)).mean() < 0.5:
-            # text_image = np.uint8(
-            #    255 * np.any(get_image_rect(bgr, rect) < 100, axis=2))
-            # lines = pytesseract.image_to_string(
-            #    get_image_rect(text_image, rect), "D2R").split("\n")
+        elif i > 0 and (rgb - rgb_prev).mean() < 0.5:
+            text_rgb = rgb[int(cap_height*0.4):int(cap_height*0.5),
+                           int(cap_width*0.2):int(cap_width*0.8)]
 
-            # for line in lines:
-            #    if levenshtein_distance(line, "SAVE AND EXIT GAME") < 10:
-            #        frame_loading = True
-            #        break
-            frame_loading = True
+            lines = pytesseract.image_to_string(text_rgb, "D2R").split("\n")
 
-        bgr_prev = bgr
+            for line in lines:
+                if levenshtein_distance(line, "SAVE AND EXIT GAME") < 10:
+                    frame_loading = True
+                    break
+
+        rgb_prev = rgb
 
         if frame_loading:
             loading_frames[start_frame+i] = 1
@@ -162,9 +162,9 @@ if processing:
             loading_frames[start_frame+i] = 0
 
 # Remove noise
-for i in range(start_frame + 1, end_frame - 1):
-    if loading_frames[i] == 1 and loading_frames[i-1] == 0 and loading_frames[i+1] == 0:
-        loading_frames[i] = 0
+# for i in range(start_frame + 1, end_frame - 1):
+#    if loading_frames[i] == 1 and loading_frames[i-1] == 0 and loading_frames[i+1] == 0:
+#        loading_frames[i] = 0
 
 # Print stats
 fps = cap.get(cv2.CAP_PROP_FPS)
