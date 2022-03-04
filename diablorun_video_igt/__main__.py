@@ -1,5 +1,3 @@
-from json import load
-from tracemalloc import start
 import cv2
 import numpy as np
 from tqdm import tqdm
@@ -164,7 +162,7 @@ if processing:
             loading_frames[start_frame+i] = 0
 
 # Remove noise
-for i in range(start_frame + 1, end_frame):
+for i in range(start_frame + 1, end_frame - 1):
     if loading_frames[i] == 1 and loading_frames[i-1] == 0 and loading_frames[i+1] == 0:
         loading_frames[i] = 0
 
