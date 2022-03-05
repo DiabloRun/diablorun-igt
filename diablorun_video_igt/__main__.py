@@ -12,11 +12,6 @@ from .template_matching import is_save_and_exit_screen
 se_rotator_rect = [(125 - 30)/800, (260 - 30)/600,
                    (125 + 30)/800, (260 + 30)/600]
 
-options_templates = [
-    cv2.imread("diablorun_video_igt/options_template_dark.png", 0),
-    cv2.imread("diablorun_video_igt/options_template_light.png", 0)
-]
-
 
 def get_se_rotator(bgr):
     return cv2.resize(get_image_ratio_rect(bgr, se_rotator_rect), (30, 30))
@@ -93,7 +88,7 @@ manual_active = False
 def reset_bar():
     global bar
     bar = np.zeros((50, cap_width, 3), np.uint8)
-    bar[:, floor(cap_width*start_frame//cap_frames)        :floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
+    bar[:, floor(cap_width*start_frame//cap_frames):floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
 
 
 reset_bar()
@@ -142,15 +137,11 @@ while True:
             manual_frames[pos] = 1
             manual_active = True
     elif paused and (key == 2555904 or key == 63235):
-        #prev_bgr = bgr
         ret, bgr = cap.read()
         manual_active_prev = manual_active
 
-        #se_rotator = get_se_rotator(get_image_rect(bgr, rect))
-        #se_rotator_prev = get_se_rotator(get_image_rect(prev_bgr, rect))
-        #print((se_rotator - se_rotator_prev).sum())
         pos = get_frame(cap)
-        cv2.setTrackbarPos("Seek", window_name, get_frame(cap))
+        cv2.setTrackbarPos("Seek", window_name, pos)
         manual_active = manual_active_prev
 
         if manual_active:
@@ -245,10 +236,11 @@ if processing:
 
         cv2.rectangle(statusbar, (0, 0), (cap_width, 50), (0, 0, 0), -1)
 
-        if se_frames[start_frame+i]:
-            cv2.putText(statusbar, "S&E " + str(start_frame + i), (35, 35),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
-        elif loading_frames[start_frame+i]:
+        if excluded_frames[start_frame+i]:
+            # if se_frames[start_frame+i]:
+            #    cv2.putText(statusbar, "S&E " + str(start_frame + i), (35, 35),
+            #                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+            # elif loading_frames[start_frame+i]:
             cv2.putText(statusbar, "LOADING " + str(start_frame + i), (35, 35),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
         else:
