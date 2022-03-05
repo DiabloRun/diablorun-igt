@@ -30,6 +30,7 @@ rect = [cap_width - cap_height*800//600, 0, cap_width, cap_height]
 end = False
 paused = True
 processing = False
+processed = False
 
 
 def on_mouse_event(event, x, y, direction, param):
@@ -62,9 +63,13 @@ def set_frame(pos):
         _, bgr = cap.read()
 
 
-cv2.namedWindow(window_name)
-cv2.createTrackbar("Seek", window_name, 0, cap_frames, set_frame)
-cv2.setMouseCallback(window_name, on_mouse_event)
+def create_window():
+    cv2.namedWindow(window_name)
+    cv2.createTrackbar("Seek", window_name, 0, cap_frames, set_frame)
+    cv2.setMouseCallback(window_name, on_mouse_event)
+
+
+create_window()
 
 instructions = np.zeros((150, cap_width, 3), np.uint8)
 cv2.putText(instructions, "1. Use mousewheel and WASD to resize/move the rect on D2 window", (25, 25),
@@ -81,6 +86,9 @@ cv2.putText(instructions, "5. Press ENTER to begin processing", (25, 125),
 bar = np.zeros((50, cap_width, 3), np.uint8)
 start_frame = 0
 end_frame = cap_frames - 1
+
+se_frames = np.zeros(cap_frames, np.uint8)
+loading_frames = np.zeros(cap_frames, np.uint8)
 manual_frames = np.ones(cap_frames, np.int8) * -1
 manual_active = False
 
@@ -91,99 +99,102 @@ def reset_bar():
     bar[:, floor(cap_width*start_frame//cap_frames):floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
 
 
-reset_bar()
+def run_gui():
+    global start_frame, end_frame, processing, manual_active, paused, bgr
 
-while True:
-    if not paused:
-        ret, next_bgr = cap.read()
+    while True:
+        if not paused:
+            ret, next_bgr = cap.read()
 
-        if ret:
-            bgr = next_bgr
+            if ret:
+                bgr = next_bgr
+                pos = get_frame(cap)
+                cv2.setTrackbarPos("Seek", window_name, pos)
+
+        reset_bar()
+
+        pos = get_frame(cap)
+        bgr_rect = get_image_rect(bgr, rect)
+        key = cv2.waitKeyEx(1)
+
+        if manual_active and key != -1 and not (key == 2555904 or key == 63235):
+            manual_active = False
+
+        if key == ord("q"):
+            break
+        elif key == 32:  # space
+            paused = not paused
+        elif key == ord("w"):
+            move_rect(0, -1)
+        elif key == ord("a"):
+            move_rect(-1, 0)
+        elif key == ord("s"):
+            move_rect(0, 1)
+        elif key == ord("d"):
+            move_rect(1, 0)
+        elif key == ord("i"):
+            start_frame = get_frame(cap)
+        elif key == ord("o"):
+            end_frame = get_frame(cap)
+        elif key == ord("l"):
+            if manual_frames[pos] == 1:
+                manual_frames[pos] = 0
+            else:
+                manual_frames[pos] = 1
+                manual_active = True
+        elif paused and (key == 2555904 or key == 63235):
+            ret, bgr = cap.read()
+            manual_active_prev = manual_active
+
             pos = get_frame(cap)
             cv2.setTrackbarPos("Seek", window_name, pos)
+            manual_active = manual_active_prev
 
-    reset_bar()
+            if manual_active:
+                manual_frames[pos] = 1
+        elif paused and (key == 2424832 or key == 63234):
+            cv2.setTrackbarPos("Seek", window_name, max(0, get_frame(cap) - 2))
+            pos = get_frame(cap)
+        elif key == 13:  # enter
+            processing = True
+            break
+        elif key != -1:
+            print(key)
 
-    # if is_save_and_exit_screen(get_image_rect(bgr, rect)):
-    #    cv2.rectangle(frame, (0, 0), (100, 100), (0, 0, 255), -1)
-
-    pos = get_frame(cap)
-    bgr_rect = get_image_rect(bgr, rect)
-    key = cv2.waitKeyEx(1)
-
-    if manual_active and key != -1 and not (key == 2555904 or key == 63235):
-        manual_active = False
-
-    if key == ord("q"):
-        break
-    elif key == 32:  # space
-        paused = not paused
-    elif key == ord("w"):
-        move_rect(0, -1)
-    elif key == ord("a"):
-        move_rect(-1, 0)
-    elif key == ord("s"):
-        move_rect(0, 1)
-    elif key == ord("d"):
-        move_rect(1, 0)
-    elif key == ord("i"):
-        start_frame = get_frame(cap)
-    elif key == ord("o"):
-        end_frame = get_frame(cap)
-    elif key == ord("l"):
-        if manual_frames[pos] == 1:
-            manual_frames[pos] = 0
+        # Draw frame
+        if manual_frames[pos] == 0:
+            cv2.putText(bar, str(pos) + " MANUAL: PLAYING", (25, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+        elif manual_frames[pos] == 1:
+            cv2.putText(bar, str(pos) + " MANUAL: LOADING", (25, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+        elif processed and excluded_frames[pos] == 1:
+            cv2.putText(bar, str(pos) + " PROCESSED: LOADING", (25, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+        elif processed and excluded_frames[pos] == 0:
+            cv2.putText(bar, str(pos) + " PROCESSED: PLAYING", (25, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+        elif not processed and is_loading(bgr_rect):
+            cv2.putText(bar, str(pos) + " LOADING", (25, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+        elif not processed and is_save_and_exit_screen(bgr_rect):
+            cv2.putText(bar, str(pos) + " S&E (UNKNOWN)", (25, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
         else:
-            manual_frames[pos] = 1
-            manual_active = True
-    elif paused and (key == 2555904 or key == 63235):
-        ret, bgr = cap.read()
-        manual_active_prev = manual_active
+            cv2.putText(bar, str(pos) + " PLAYING", (25, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
 
-        pos = get_frame(cap)
-        cv2.setTrackbarPos("Seek", window_name, pos)
-        manual_active = manual_active_prev
+        frame = np.concatenate((bgr, instructions, bar), 0)
+        cv2.rectangle(frame, rect[0:2], rect[2:4], (0, 0, 255), 1)
+        cv2.imshow(window_name, frame)
 
-        if manual_active:
-            manual_frames[pos] = 1
-    elif paused and (key == 2424832 or key == 63234):
-        cv2.setTrackbarPos("Seek", window_name, max(0, get_frame(cap) - 2))
-        pos = get_frame(cap)
-    elif key == 13:  # enter
-        processing = True
-        break
-    elif key != -1:
-        print(key)
+    cv2.destroyAllWindows()
 
-    # Draw frame
-    if manual_frames[pos] == 0:
-        cv2.putText(bar, str(pos) + " MANUAL: PLAYING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
-    elif manual_frames[pos] == 1:
-        cv2.putText(bar, str(pos) + " MANUAL: LOADING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
-    elif is_loading(bgr_rect):
-        cv2.putText(bar, str(pos) + " LOADING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
-    elif is_save_and_exit_screen(bgr_rect):
-        cv2.putText(bar, str(pos) + " S&E (UNKNOWN)", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
-    else:
-        cv2.putText(bar, str(pos) + " PLAYING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
 
-    frame = np.concatenate((bgr, instructions, bar), 0)
-
-    cv2.rectangle(frame, rect[0:2], rect[2:4], (0, 0, 255), 1)
-    cv2.imshow(window_name, frame)
-
-cv2.destroyAllWindows()
+run_gui()
 
 # Process
 se_rotator_prev = None
-
-se_frames = np.zeros(cap_frames, np.uint8)
-loading_frames = np.zeros(cap_frames, np.uint8)
 
 if processing:
     print("Processing...")
@@ -214,6 +225,17 @@ for i in range(start_frame + 1, end_frame - 1):
 
 # Overwrite manual frames
 excluded_frames = np.logical_or(se_frames, loading_frames)
+
+for i in range(start_frame + 1, end_frame - 1):
+    if manual_frames[i] != -1:
+        excluded_frames[i] = manual_frames[i]
+
+# Run GUI again for verification
+processed = True
+paused = True
+
+create_window()
+run_gui()
 
 for i in range(start_frame + 1, end_frame - 1):
     if manual_frames[i] != -1:
