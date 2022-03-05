@@ -85,12 +85,13 @@ cv2.putText(instructions, "5. Press ENTER to begin processing", (25, 125),
 bar = np.zeros((50, cap_width, 3), np.uint8)
 start_frame = 0
 end_frame = cap_frames - 1
+manual_frames = np.ones(cap_frames, np.int8) * -1
 
 
 def reset_bar():
     global bar
     bar = np.zeros((50, cap_width, 3), np.uint8)
-    bar[:, floor(cap_width*start_frame//cap_frames)        :floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
+    bar[:, floor(cap_width*start_frame//cap_frames):floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
 
 
 reset_bar()
@@ -104,10 +105,31 @@ while True:
             pos = get_frame(cap)
             cv2.setTrackbarPos("Seek", window_name, pos)
 
-    frame = np.concatenate((bgr, instructions, bar), 0)
+    reset_bar()
 
     # if is_save_and_exit_screen(get_image_rect(bgr, rect)):
     #    cv2.rectangle(frame, (0, 0), (100, 100), (0, 0, 255), -1)
+
+    pos = get_frame(cap)
+    bgr_rect = get_image_rect(bgr, rect)
+
+    if manual_frames[pos] == 0:
+        cv2.putText(bar, str(pos) + " MANUAL: PLAYING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+    elif manual_frames[pos] == 1:
+        cv2.putText(bar, str(pos) + " MANUAL: LOADING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+    elif is_loading(bgr_rect):
+        cv2.putText(bar, str(pos) + " LOADING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+    elif is_save_and_exit_screen(bgr_rect):
+        cv2.putText(bar, str(pos) + " S&E (UNKNOWN)", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+    else:
+        cv2.putText(bar, str(pos) + " PLAYING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+
+    frame = np.concatenate((bgr, instructions, bar), 0)
 
     cv2.rectangle(frame, rect[0:2], rect[2:4], (0, 0, 255), 1)
     cv2.imshow(window_name, frame)
@@ -128,10 +150,13 @@ while True:
         move_rect(1, 0)
     elif key == ord("i"):
         start_frame = get_frame(cap)
-        reset_bar()
     elif key == ord("o"):
         end_frame = get_frame(cap)
-        reset_bar()
+    elif key == ord("l"):
+        if manual_frames[pos] == 1:
+            manual_frames[pos] = 0
+        else:
+            manual_frames[pos] = 1
     elif paused and (key == 2555904 or key == 63235):
         #prev_bgr = bgr
         ret, bgr = cap.read()
@@ -151,10 +176,10 @@ while True:
 cv2.destroyAllWindows()
 
 # Process
+se_rotator_prev = None
+
 se_frames = np.zeros(cap_frames, np.uint8)
 loading_frames = np.zeros(cap_frames, np.uint8)
-
-se_rotator_prev = None
 
 if processing:
     print("Processing...")
@@ -171,9 +196,6 @@ if processing:
         elif i > 0 and (se_rotator - se_rotator_prev).sum() < 10000 and is_save_and_exit_screen(bgr_rect):
             se_frames[start_frame+i] = 1
 
-            # if se_screen:
-            #    cv2.imwrite("debug/SE"+str(i)+".png", bgr_rect)
-
         se_rotator_prev = se_rotator
 
 # Fill S&E holes
@@ -185,6 +207,13 @@ for i in range(start_frame + 1, end_frame - 1):
 for i in range(start_frame + 1, end_frame - 1):
     if se_frames[i] == 1 and se_frames[i-1] == 0 and se_frames[i+1] == 0:
         se_frames[i] = 0
+
+# Overwrite manual frames
+excluded_frames = np.logical_or(se_frames, loading_frames)
+
+for i in range(start_frame + 1, end_frame - 1):
+    if manual_frames[i] != -1:
+        excluded_frames[i] = manual_frames[i]
 
 # Output log
 fps = cap.get(cv2.CAP_PROP_FPS)
@@ -204,7 +233,7 @@ if processing:
         cv2.rectangle(statusbar, (0, 0), (cap_width, 50), (0, 0, 0), -1)
 
         if se_frames[start_frame+i]:
-            cv2.putText(statusbar, "S&E SCREEN " + str(start_frame + i), (35, 35),
+            cv2.putText(statusbar, "S&E " + str(start_frame + i), (35, 35),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
         elif loading_frames[start_frame+i]:
             cv2.putText(statusbar, "LOADING " + str(start_frame + i), (35, 35),
@@ -216,9 +245,9 @@ if processing:
         frame = np.concatenate((statusbar, bgr), 0)
         videolog.write(frame)
 
-# Print stats
-excluded_frames = np.logical_or(se_frames, loading_frames)
+    videolog.release()
 
+# Print stats
 rta_frames = end_frame - start_frame
 igt_frames = rta_frames - excluded_frames[start_frame:end_frame].sum()
 rta_seconds = rta_frames / fps
@@ -229,4 +258,3 @@ print("IGT:", igt_frames, "frames,", igt_seconds, "seconds")
 
 # Done
 cap.release()
-videolog.release()
