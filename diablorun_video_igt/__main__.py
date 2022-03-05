@@ -2,13 +2,44 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 from math import floor
-from Levenshtein import distance as levenshtein_distance
-import pytesseract
 
 
-from diablorun_igt.utils import bgr_to_rgb, get_image_rect
+from diablorun_igt.utils import bgr_to_rgb, get_image_ratio_rect, get_image_rect
 from diablorun_igt.loading_detection import is_loading
 
+# S&E screen detection
+se_rotator_rect = [(125 - 30)/800, (260 - 30)/600,
+                   (125 + 30)/800, (260 + 30)/600]
+
+options_templates = [
+    cv2.imread("diablorun_video_igt/options_template_dark.png", 0),
+    cv2.imread("diablorun_video_igt/options_template_light.png", 0)
+]
+
+
+def get_se_rotator(bgr):
+    return cv2.resize(get_image_ratio_rect(bgr, se_rotator_rect), (30, 30))
+
+
+def is_save_and_exit_screen(bgr, method=cv2.TM_CCOEFF):
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+
+    for template in options_templates:
+        res = cv2.matchTemplate(gray, template, method)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+
+        if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+            top_left = min_loc
+        else:
+            top_left = max_loc
+
+        if abs(top_left[0] / gray.shape[1] - 0.4) < 0.05 and abs(top_left[1]/gray.shape[0] - 0.33125) < 0.05:
+            return True
+
+    return False
+
+
+# Start
 video_path = input("Enter path to video: ")
 window_name = "Diablo.run IGT"
 
@@ -76,7 +107,7 @@ end_frame = cap_frames - 1
 def reset_bar():
     global bar
     bar = np.zeros((50, cap_width, 3), np.uint8)
-    bar[:, floor(cap_width*start_frame//cap_frames):floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
+    bar[:, floor(cap_width*start_frame//cap_frames)        :floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
 
 
 reset_bar()
@@ -116,8 +147,12 @@ while True:
         end_frame = get_frame(cap)
         reset_bar()
     elif paused and (key == 2555904 or key == 63235):
-        prev_bgr = bgr
+        #prev_bgr = bgr
         ret, bgr = cap.read()
+
+        #se_rotator = get_se_rotator(get_image_rect(bgr, rect))
+        #se_rotator_prev = get_se_rotator(get_image_rect(prev_bgr, rect))
+        #print((se_rotator - se_rotator_prev).sum())
         cv2.setTrackbarPos("Seek", window_name, get_frame(cap))
     elif paused and (key == 2424832 or key == 63234):
         cv2.setTrackbarPos("Seek", window_name, max(0, get_frame(cap) - 2))
@@ -131,7 +166,7 @@ cv2.destroyAllWindows()
 
 # Process
 loading_frames = np.zeros(cap_frames, np.uint8)
-rgb_prev = None
+se_rotator_prev = None
 
 if processing:
     set_frame(start_frame)
@@ -139,22 +174,15 @@ if processing:
     for i in tqdm(range(end_frame - start_frame)):
         ret, bgr = cap.read()
         rgb = bgr_to_rgb(get_image_rect(bgr, rect))
+        se_rotator = get_se_rotator(get_image_rect(bgr, rect))
         frame_loading = False
 
         if is_loading(rgb):
             frame_loading = True
-        elif i > 0 and (rgb - rgb_prev).mean() < 0.5:
-            text_rgb = rgb[int(cap_height*0.4):int(cap_height*0.5),
-                           int(cap_width*0.2):int(cap_width*0.8)]
+        elif i > 0 and (se_rotator - se_rotator_prev).sum() < 10000:
+            frame_loading = is_save_and_exit_screen(bgr)
 
-            lines = pytesseract.image_to_string(text_rgb, "D2R").split("\n")
-
-            for line in lines:
-                if levenshtein_distance(line, "SAVE AND EXIT GAME") < 10:
-                    frame_loading = True
-                    break
-
-        rgb_prev = rgb
+        se_rotator_prev = se_rotator
 
         if frame_loading:
             loading_frames[start_frame+i] = 1

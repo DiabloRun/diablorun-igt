@@ -63,6 +63,14 @@ def get_image_rect(image, rect):
     return image
 
 
+def get_image_ratio_rect(image, ratio_rect):
+    if not ratio_rect is None:
+        l, t, r, b = ratio_rect
+        return image[int(t*image.shape[0]):int(b*image.shape[0]), int(l*image.shape[1]):int(r*image.shape[1])]
+
+    return image
+
+
 def bgr_in_color_range(bgr, color, dist):
     return np.all(np.abs(bgr - color) <= dist, axis=2)
 
