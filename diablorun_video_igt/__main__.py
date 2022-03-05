@@ -58,9 +58,10 @@ def set_frame(pos):
     if get_frame(cap) == pos:
         return
 
-    global bgr
+    global bgr, manual_active
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, min(pos, cap_frames - 1))
+    manual_active = False
 
     if paused:
         _, bgr = cap.read()
@@ -86,12 +87,13 @@ bar = np.zeros((50, cap_width, 3), np.uint8)
 start_frame = 0
 end_frame = cap_frames - 1
 manual_frames = np.ones(cap_frames, np.int8) * -1
+manual_active = False
 
 
 def reset_bar():
     global bar
     bar = np.zeros((50, cap_width, 3), np.uint8)
-    bar[:, floor(cap_width*start_frame//cap_frames):floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
+    bar[:, floor(cap_width*start_frame//cap_frames)        :floor(cap_width*end_frame//cap_frames)] = (255, 0, 0)
 
 
 reset_bar()
@@ -112,29 +114,10 @@ while True:
 
     pos = get_frame(cap)
     bgr_rect = get_image_rect(bgr, rect)
-
-    if manual_frames[pos] == 0:
-        cv2.putText(bar, str(pos) + " MANUAL: PLAYING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
-    elif manual_frames[pos] == 1:
-        cv2.putText(bar, str(pos) + " MANUAL: LOADING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
-    elif is_loading(bgr_rect):
-        cv2.putText(bar, str(pos) + " LOADING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
-    elif is_save_and_exit_screen(bgr_rect):
-        cv2.putText(bar, str(pos) + " S&E (UNKNOWN)", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
-    else:
-        cv2.putText(bar, str(pos) + " PLAYING", (25, 35),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
-
-    frame = np.concatenate((bgr, instructions, bar), 0)
-
-    cv2.rectangle(frame, rect[0:2], rect[2:4], (0, 0, 255), 1)
-    cv2.imshow(window_name, frame)
-
     key = cv2.waitKeyEx(1)
+
+    if manual_active and key != -1 and not (key == 2555904 or key == 63235):
+        manual_active = False
 
     if key == ord("q"):
         break
@@ -157,21 +140,51 @@ while True:
             manual_frames[pos] = 0
         else:
             manual_frames[pos] = 1
+            manual_active = True
     elif paused and (key == 2555904 or key == 63235):
         #prev_bgr = bgr
         ret, bgr = cap.read()
+        manual_active_prev = manual_active
 
         #se_rotator = get_se_rotator(get_image_rect(bgr, rect))
         #se_rotator_prev = get_se_rotator(get_image_rect(prev_bgr, rect))
         #print((se_rotator - se_rotator_prev).sum())
+        pos = get_frame(cap)
         cv2.setTrackbarPos("Seek", window_name, get_frame(cap))
+        manual_active = manual_active_prev
+
+        if manual_active:
+            manual_frames[pos] = 1
     elif paused and (key == 2424832 or key == 63234):
         cv2.setTrackbarPos("Seek", window_name, max(0, get_frame(cap) - 2))
+        pos = get_frame(cap)
     elif key == 13:  # enter
         processing = True
         break
     elif key != -1:
         print(key)
+
+    # Draw frame
+    if manual_frames[pos] == 0:
+        cv2.putText(bar, str(pos) + " MANUAL: PLAYING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+    elif manual_frames[pos] == 1:
+        cv2.putText(bar, str(pos) + " MANUAL: LOADING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+    elif is_loading(bgr_rect):
+        cv2.putText(bar, str(pos) + " LOADING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+    elif is_save_and_exit_screen(bgr_rect):
+        cv2.putText(bar, str(pos) + " S&E (UNKNOWN)", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+    else:
+        cv2.putText(bar, str(pos) + " PLAYING", (25, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+
+    frame = np.concatenate((bgr, instructions, bar), 0)
+
+    cv2.rectangle(frame, rect[0:2], rect[2:4], (0, 0, 255), 1)
+    cv2.imshow(window_name, frame)
 
 cv2.destroyAllWindows()
 
