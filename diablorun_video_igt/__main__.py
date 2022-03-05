@@ -173,14 +173,15 @@ if processing:
 
     for i in tqdm(range(end_frame - start_frame)):
         ret, bgr = cap.read()
-        rgb = bgr_to_rgb(get_image_rect(bgr, rect))
-        se_rotator = get_se_rotator(get_image_rect(bgr, rect))
+        bgr_rect = get_image_rect(bgr, rect)
+        rgb = bgr_to_rgb(bgr_rect)
+        se_rotator = get_se_rotator(bgr_rect)
         frame_loading = False
 
         if is_loading(rgb):
             frame_loading = True
         elif i > 0 and (se_rotator - se_rotator_prev).sum() < 10000:
-            frame_loading = is_save_and_exit_screen(bgr)
+            frame_loading = is_save_and_exit_screen(bgr_rect)
 
         se_rotator_prev = se_rotator
 
