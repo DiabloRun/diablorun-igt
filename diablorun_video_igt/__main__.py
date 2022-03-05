@@ -204,13 +204,13 @@ if processing:
         cv2.rectangle(statusbar, (0, 0), (cap_width, 50), (0, 0, 0), -1)
 
         if se_frames[start_frame+i]:
-            cv2.putText(statusbar, "S&E SCREEN", (35, 35),
+            cv2.putText(statusbar, "S&E SCREEN " + str(start_frame + i), (35, 35),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
         elif loading_frames[start_frame+i]:
-            cv2.putText(statusbar, "LOADING", (35, 35),
+            cv2.putText(statusbar, "LOADING " + str(start_frame + i), (35, 35),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
         else:
-            cv2.putText(statusbar, "PLAYING", (35, 35),
+            cv2.putText(statusbar, "PLAYING " + str(start_frame + i), (35, 35),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
 
         frame = np.concatenate((statusbar, bgr), 0)
