@@ -6,6 +6,7 @@ from math import floor
 
 from diablorun_igt.utils import bgr_to_rgb, get_image_ratio_rect, get_image_rect
 from diablorun_igt.loading_detection import is_loading
+from .template_matching import is_save_and_exit_screen
 
 # S&E screen detection
 se_rotator_rect = [(125 - 30)/800, (260 - 30)/600,
@@ -19,24 +20,6 @@ options_templates = [
 
 def get_se_rotator(bgr):
     return cv2.resize(get_image_ratio_rect(bgr, se_rotator_rect), (30, 30))
-
-
-def is_save_and_exit_screen(bgr, method=cv2.TM_CCOEFF):
-    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-
-    for template in options_templates:
-        res = cv2.matchTemplate(gray, template, method)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-
-        if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
-            top_left = min_loc
-        else:
-            top_left = max_loc
-
-        if abs(top_left[0] / gray.shape[1] - 0.4) < 0.05 and abs(top_left[1]/gray.shape[0] - 0.33125) < 0.05:
-            return True
-
-    return False
 
 
 # Start
@@ -123,6 +106,9 @@ while True:
 
     frame = np.concatenate((bgr, instructions, bar), 0)
 
+    # if is_save_and_exit_screen(get_image_rect(bgr, rect)):
+    #    cv2.rectangle(frame, (0, 0), (100, 100), (0, 0, 255), -1)
+
     cv2.rectangle(frame, rect[0:2], rect[2:4], (0, 0, 255), 1)
     cv2.imshow(window_name, frame)
 
@@ -165,10 +151,13 @@ while True:
 cv2.destroyAllWindows()
 
 # Process
+se_frames = np.zeros(cap_frames, np.uint8)
 loading_frames = np.zeros(cap_frames, np.uint8)
+
 se_rotator_prev = None
 
 if processing:
+    print("Processing...")
     set_frame(start_frame)
 
     for i in tqdm(range(end_frame - start_frame)):
@@ -176,32 +165,68 @@ if processing:
         bgr_rect = get_image_rect(bgr, rect)
         rgb = bgr_to_rgb(bgr_rect)
         se_rotator = get_se_rotator(bgr_rect)
-        frame_loading = False
 
         if is_loading(rgb):
-            frame_loading = True
-        elif i > 0 and (se_rotator - se_rotator_prev).sum() < 10000:
-            frame_loading = is_save_and_exit_screen(bgr_rect)
+            loading_frames[start_frame+i] = 1
+        elif i > 0 and (se_rotator - se_rotator_prev).sum() < 10000 and is_save_and_exit_screen(bgr_rect):
+            se_frames[start_frame+i] = 1
+
+            # if se_screen:
+            #    cv2.imwrite("debug/SE"+str(i)+".png", bgr_rect)
 
         se_rotator_prev = se_rotator
 
-        if frame_loading:
-            loading_frames[start_frame+i] = 1
-        else:
-            loading_frames[start_frame+i] = 0
+# Fill S&E holes
+for i in range(start_frame + 1, end_frame - 1):
+    if se_frames[i] == 0 and se_frames[i-1] == 1 and se_frames[i+1] == 1:
+        se_frames[i] = 1
 
-# Remove noise
-# for i in range(start_frame + 1, end_frame - 1):
-#    if loading_frames[i] == 1 and loading_frames[i-1] == 0 and loading_frames[i+1] == 0:
-#        loading_frames[i] = 0
+# Remove S&E noise
+for i in range(start_frame + 1, end_frame - 1):
+    if se_frames[i] == 1 and se_frames[i-1] == 0 and se_frames[i+1] == 0:
+        se_frames[i] = 0
 
-# Print stats
+# Output log
 fps = cap.get(cv2.CAP_PROP_FPS)
 
+if processing:
+    videolog_path = video_path+"_log.mp4"
+    print("Writing video log to " + videolog_path + "...")
+    statusbar = np.zeros((50, cap_width, 3), np.uint8)
+    videolog = cv2.VideoWriter(
+        videolog_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (cap_width, 50 + cap_height))
+
+    set_frame(start_frame)
+
+    for i in tqdm(range(end_frame - start_frame)):
+        ret, bgr = cap.read()
+
+        cv2.rectangle(statusbar, (0, 0), (cap_width, 50), (0, 0, 0), -1)
+
+        if se_frames[start_frame+i]:
+            cv2.putText(statusbar, "S&E SCREEN", (35, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+        elif loading_frames[start_frame+i]:
+            cv2.putText(statusbar, "LOADING", (35, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+        else:
+            cv2.putText(statusbar, "PLAYING", (35, 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0))
+
+        frame = np.concatenate((statusbar, bgr), 0)
+        videolog.write(frame)
+
+# Print stats
+excluded_frames = np.logical_or(se_frames, loading_frames)
+
 rta_frames = end_frame - start_frame
-igt_frames = rta_frames - int(loading_frames[start_frame:end_frame].sum())
+igt_frames = rta_frames - excluded_frames[start_frame:end_frame].sum()
 rta_seconds = rta_frames / fps
 igt_seconds = igt_frames / fps
 
 print("RTA:", rta_frames, "frames,", rta_seconds, "seconds")
 print("IGT:", igt_frames, "frames,", igt_seconds, "seconds")
+
+# Done
+cap.release()
+videolog.release()
